@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Редактор — Catcher (КГБ)</title>
+
+  <style>
+    :root{
+      --ui-acc:#ffd700;
+      --card:#151515;
+      --ink:#eee;
+      --muted:#b7b7b7;
+      --stroke:#2a2a2a;
+      --gap:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:#0d0d0d; color:var(--ink);
+      font-family:Rubik,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      display:flex; flex-direction:column;
+    }
+    header{
+      display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--stroke);
+      position:sticky; top:0; background:#0d0d0d; z-index:2;
+    }
+    header img{height:42px}
+    header h1{font-size:20px; margin:0; color:var(--ui-acc); font-weight:800}
+    main{display:grid; grid-template-columns: 430px 1fr; gap:22px; padding:20px; max-width:1500px; width:100%; margin:0 auto}
+    .card{
+      background:var(--card); border:1px solid var(--stroke); border-radius:14px; padding:18px;
+      box-shadow:0 0 28px rgba(255,215,0,.06);
+    }
+    .card h2{margin:0 0 14px; font-size:18px; color:var(--ui-acc)}
+    label{display:block; margin:12px 0 8px; font-size:15px; color:#fff; font-weight:600}
+    input[type="text"], input[type="number"], input[type="url"], textarea, select{
+      width:100%; background:#101010; color:#fff; border:1px solid #3a3a3a; border-radius:10px; padding:12px 14px; font-size:16px;
+      outline:none; transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    textarea{min-height:110px; resize:vertical}
+    input:focus, textarea:focus, select:focus{border-color:#4b4b4b; box-shadow:0 0 0 3px rgba(255,215,0,.16)}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap)}
+    .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--gap)}
+    .inline{display:flex; gap:12px; align-items:center}
+    .hint{color:var(--muted); font-size:13px; margin-top:8px}
+    .pill{display:inline-block; padding:8px 12px; border:1px dashed #444; border-radius:999px; color:#bbb; font-size:13px}
+
+    button{
+      background:linear-gradient(90deg,#ffbf00,#ffd700); color:#000; border:none; border-radius:12px; font-weight:800;
+      padding:14px 18px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; font-size:16px;
+    }
+    button:hover{transform:translateY(-1px); box-shadow:0 8px 26px rgba(255,215,0,.28)}
+    .btn-ghost{background:transparent; color:#fff; border:1px solid #444}
+    .btn-danger{background:#a80000; color:#fff}
+    .stack{display:flex; flex-direction:column; gap:var(--gap)}
+    .levels .level{background:#111; border:1px solid #2a2a2a; border-radius:12px; padding:16px}
+    .level h3{margin:0 0 10px; font-size:16px; color:#fff; display:flex; align-items:center; justify-content:space-between}
+    .toolbar{display:flex; gap:12px; flex-wrap:wrap}
+    .right{display:flex; gap:10px; align-items:center; justify-content:flex-end}
+
+    footer{padding:14px 20px; color:#888; border-top:1px solid var(--stroke); display:flex; align-items:center; justify-content:center; gap:8px}
+    footer a{color:var(--ui-acc); text-decoration:none}
+
+    /* ПРЕДПРОСМОТР */
+    .preview-wrap{display:grid; grid-template-rows:auto 1fr; gap:12px; height:100%}
+    .preview-stage{background:#0a0a0a; border:1px dashed #333; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:24px; min-height:320px}
+    .preview-controls{display:grid; grid-template-columns:1fr auto; gap:12px}
+    .preview-item{
+      position:relative; display:inline-flex; align-items:center; justify-content:center;
+      padding:18px 22px; min-width:160px; min-height:70px; transition:all .2s ease;
+      background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important;
+    }
+    .preview-item{ width: var(--cw, auto); height: var(--ch, auto); }
+    .preview-item img{ width:100%; height:100%; object-fit:contain; }
+
+    /* ФИГУРЫ */
+    .shape-rect{border-radius:10px}
+    .shape-rounded{border-radius:20px}
+    .shape-circle{border-radius:9999px}
+    .shape-diamond{clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);}
+    .shape-star{clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)}
+
+    /* ЭФФЕКТЫ */
+    .fx-shadow{box-shadow:0 10px 30px rgba(0,0,0,.5)}
+    .fx-glow{box-shadow:0 0 18px var(--glow, #00f0ff)}
+    .fx-3d{box-shadow:7px 7px 20px rgba(0,0,0,.5), inset -5px -5px 12px rgba(255,255,255,.22)}
+    .fx-border{border-style:solid}
+
+    /* РЕЗУЛЬТАТ */
+    .result{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start}
+    .result textarea{height:120px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+  </style>
+
+  <link id="gf" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap">
+</head>
+<body>
+  <header>
+    <a href="https://kgbgamecorp.ru" target="_blank" rel="noopener">
+      <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" alt="КГБ">
+    </a>
+    <h1>Редактор — Catcher</h1>
+  </header>
+
+  <main>
+  <section class="card stack">
+  <h2>⚙️ Общие настройки</h2>
+<div class="row">
+  <div>
+    <label>Язык / режим</label>
+    <select id="language"></select>
+  </div>
+  <div>
+    <label>Шрифт</label>
+    <select id="font"></select>
+  </div>
+</div>
+  <div class="row">
+    <div>
+      <label>Скорость падения (1–10)</label>
+      <input type="number" id="speed" value="5" min="1" max="10">
+    </div>
+     </div>
+  <div class="row">
+    <div>
+      <label>Направление движения</label>
+      <select id="direction">
+        <option value="down">Сверху вниз</option>
+        <option value="up">Снизу вверх</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Размер шрифта (px)</label>
+      <input type="number" id="fontSize" value="24" min="10" max="100">
+    </div>
+    <div>
+      <label>Цвет шрифта</label>
+      <input type="color" id="textColor" value="#ffffff">
+    </div>
+  </div>
+
+  <div class="card" style="border: 1px dashed var(--ui-acc)">
+    <h2>🦸‍♂️ Персонаж (Ловец)</h2>
+    <label>Ссылка на картинку игрока (GIF/PNG)</label>
+    <input type="url" id="playerImg" placeholder="https://.../basket.png">
+    <div class="hint">Если оставить пустым — игра будет работать по кликам (как раньше).</div>
+    
+    <div class="row">
+      <div>
+        <label>Ширина (px)</label>
+        <input type="number" id="playerWidth" value="100" min="40" max="300">
+      </div>
+      <div>
+        <label>Высота (px)</label>
+        <input type="number" id="playerHeight" value="100" min="40" max="300">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🚀 Запуск квиза</h2>
+    <label>Текст при запуске</label>
+    <input type="text" id="startTitle" placeholder="Игра «Листопад»" />
+    <label>Текст кнопки</label>
+    <input type="text" id="startBtnText" placeholder="Начать" />
+  </div>
+
+  <div class="card">
+    <h2>🏁 Финал</h2>
+    <label>Текст после завершения</label>
+    <textarea id="finalFeedback" placeholder="Отличная работа!"></textarea>
+  </div>
+
+<div>
+  <label>Фигура элементов</label>
+  <select id="shape">
+    <option value="rect">Прямоугольник</option>
+    <option value="rounded" selected>Скруглённый</option>
+    <option value="circle">Круг</option>
+    <option value="diamond">Ромб</option>
+    <option value="star">Звезда</option>
+  </select>
+</div>
+  <div>
+    <label>Фон — цвет</label>
+    <input type="color" id="bgColor" value="#1a1a1a">
+  </div>
+<label>Фоны-держатели (URL)</label>
+<textarea id="bgImages" placeholder="https://.../holder1.png"></textarea>
+
+  <div class="row-3" style="margin-top:6px">
+    <div>
+      <label>Рамка (цвет)</label>
+      <input type="color" id="borderColor" value="#ffffff">
+    </div>
+    <div>
+      <label>Толщина (px)</label>
+      <input type="number" id="borderWidth" value="1" min="0">
+    </div>
+    <div class="inline" style="align-items:end;">
+      <label style="width:100%">Включена?</label>
+      <input type="checkbox" id="borderOn" checked>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="inline">
+      <input type="checkbox" id="shadowOn" checked><label for="shadowOn">Тень</label>
+    </div>
+    <div class="inline">
+      <input type="checkbox" id="glowOn"><label for="glowOn">Подсветка</label>
+      <input type="color" id="glowColor" value="#00f0ff">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="inline">
+      <input type="checkbox" id="fx3d"><label for="fx3d">3D эффект</label>
+    </div>
+    <div>
+      <label>Прозрачность (0–1)</label>
+      <input type="text" id="opacity" value="1">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Отступы внутри (px)</label>
+      <input type="number" id="pad" value="22" min="0" max="120">
+    </div>
+  </div>
+<div>
+  <label>Размер картинки (px)</label>
+  <input type="range" id="imgBox" min="80" max="260" value="160" step="10">
+</div>
+  
+  <div class="card" style="border-style:dashed">
+    <h2>🧪 Предпросмотр Элемента</h2>
+    <div class="preview-controls">
+      <input type="text" id="previewValue" placeholder="Текст или URL..." value="Preview">
+      <div class="right">
+        <button class="btn-ghost" id="btnText">Текст</button>
+        <button class="btn-ghost" id="btnImage">Картинка</button>
+      </div>
+    </div>
+    <div class="preview-stage">
+      <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#00f0ff;">
+        <span id="previewText" style="font-weight:800; font-size:24px">Preview</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+    <section class="card stack">
+      <h2>🎯 Уровни</h2>
+      <div class="levels" id="levels"></div>
+      <div class="toolbar">
+        <button id="addLevel">➕ Добавить уровень</button>
+        <span class="pill">Неограниченно уровней</span>
+      </div>
+
+      <h2 style="margin-top:8px">🚀 Публикация</h2>
+      <div class="row">
+        <button id="saveBtn">💾 Сохранить и получить iframe</button>
+        <button id="testBtn" class="btn-ghost">🔍 Валидация JSON</button>
+      </div>
+
+      <div class="result" style="margin-top:10px">
+        <textarea id="iframeOut" readonly placeholder="Здесь появится iframe для Genially"></textarea>
+        <button id="copyBtn" class="btn-ghost">📋 Копировать</button>
+      </div>
+      <div class="hint">Убедитесь, что репозиторий 'catcher' опубликован на GitHub Pages!</div>
+    </section>
+  </main>
+
+  <footer>© 2026 <a href="https://kgbgamecorp.ru" target="_blank" rel="noopener">Корпорация Геймификации Будущего</a></footer>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
+
+    const FONT_MAP = {
+      ru: ["PT Sans","Rubik","Lobster","Marck Script","Cormorant","Montserrat","Open Sans","Noto Sans"],
+      en: ["Roboto","Open Sans","Montserrat","Inter","Poppins","Playfair Display","Indie Flower","Rubik"],
+      fr: ["Noto Sans","Playfair Display","Parisienne","Montserrat","Rubik"],
+      es: ["Montserrat","Alegreya","Caveat","Roboto","Rubik"],
+      de: ["PT Sans","Rubik","Inter","Montserrat","Playfair Display"],
+      zh: ["Noto Sans SC","ZCOOL XiaoWei","Ma Shan Zheng"],
+      ja: ["Noto Sans JP","Noto Serif JP","Kosugi Maru"],
+      math: ["Latin Modern Math","Rubik"]
+    };
+    const LANG_LABELS = {
+      ru:"Русский", en:"English", fr:"Français", es:"Español",
+      de:"Deutsch", zh:"中文", ja:"日本語", math:"Математика (LaTeX)"
+    };
+
+    function fillLanguageSelect(){
+      const sel = $('#language');
+      sel.innerHTML = '';
+      Object.keys(FONT_MAP).forEach(k=>{
+        const opt = document.createElement('option');
+        opt.value = k; opt.textContent = LANG_LABELS[k];
+        sel.appendChild(opt);
+      });
+      sel.value = 'ru';
+    }
+    function fillFontsForLanguage(lang){
+      const sel = $('#font');
+      sel.innerHTML = '';
+      (FONT_MAP[lang] || FONT_MAP.en).forEach(f=>{
+        const opt = document.createElement('option');
+        opt.textContent = f;
+        sel.appendChild(opt);
+      });
+      sel.value = FONT_MAP[lang][0];
+      applyGoogleFont(sel.value);
+    }
+
+    function applyGoogleFont(fontName){
+      const gf = document.getElementById('gf');
+      const family = fontName.replace(/ /g, '+');
+      gf.href = `https://fonts.googleapis.com/css2?family=${family}:wght@400;700&display=swap`;
+      const text = $('#previewText');
+      text.style.fontFamily = fontName + ", system-ui, sans-serif";
+      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
+      document.body.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
+    }
+
+    function parseBgList(){
+      const raw = ($('#bgImages')?.value || '').split(/\n|,/).map(s => s.trim()).filter(Boolean);
+      return raw.filter(u => /^https?:\/\//i.test(u));
+    }
+
+    function currentPreviewBackground(){
+      const list = parseBgList();
+      if(list.length){
+        const pick = list[Math.floor(Math.random() * list.length)];
+        return `url(${pick}) center/contain no-repeat`;
+      }
+      return $('#bgColor').value;
+    }
+
+    function updatePreview(){
+      const item = $('#previewItem');
+      const text = $('#previewText');
+      const val  = $('#previewValue').value.trim();
+      const asImage = item.dataset.mode === 'image' || /^https?:\/\//i.test(val);
+
+      item.className = 'preview-item';
+      item.style.setProperty('--glow', $('#glowColor').value);
+      item.classList.add('shape-' + $('#shape').value);
+      item.classList.toggle('fx-shadow', $('#shadowOn').checked);
+      item.classList.toggle('fx-3d', $('#fx3d').checked);
+      item.classList.toggle('fx-glow', $('#glowOn').checked);
+
+      if($('#borderOn').checked && Number($('#borderWidth').value) > 0){
+        item.classList.add('fx-border');
+        item.style.borderWidth = Number($('#borderWidth').value) + 'px';
+        item.style.borderColor = $('#borderColor').value;
+      } else {
+        item.classList.remove('fx-border');
+        item.style.borderWidth = '0px';
+        item.style.borderColor = 'transparent';
+      }
+
+      item.style.background = currentPreviewBackground();
+      const op = Math.max(0, Math.min(1, parseFloat($('#opacity').value || '1')));
+      item.style.opacity = op;
+
+      text.style.color = $('#textColor').value;
+      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
+      text.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
+
+      if(asImage){
+        item.dataset.mode = 'image';
+        text.style.display = 'none';
+        if(!item.querySelector('img')) item.appendChild(document.createElement('img'));
+        const img = item.querySelector('img');
+        img.src = val || 'https://via.placeholder.com/200x140?text=Image';
+        const box = Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10)));
+        item.style.setProperty('--cw', box + 'px');
+        item.style.setProperty('--ch', box + 'px');
+      } else {
+        item.dataset.mode = 'text';
+        if(item.querySelector('img')) item.querySelector('img').remove();
+        text.style.display = 'block';
+        text.textContent = val || 'Preview';
+        item.style.removeProperty('--cw');
+        item.style.removeProperty('--ch');
+      }
+      const pad = Math.max(0, parseInt($('#pad').value||'22', 10));
+      item.style.padding = pad + 'px';
+    }
+
+    function levelTemplate(idx){
+      const wrap = document.createElement('div');
+      wrap.className = 'level';
+      wrap.innerHTML = `
+        <h3>Уровень <span class="num">${idx+1}</span>
+          <span class="right">
+            <button type="button" class="btn-ghost up">▲</button>
+            <button type="button" class="btn-ghost down">▼</button>
+            <button type="button" class="btn-danger del">Удалить</button>
+          </span>
+        </h3>
+        <label>Название уровня / Target</label>
+        <input type="text" class="target" placeholder="Например: буква S или Animals">
+        <div class="row">
+          <div>
+            <label>Правильные (по одному на строке)</label>
+            <textarea class="correct" placeholder="sun\nstar"></textarea>
+          </div>
+          <div>
+            <label>Отвлекающие</label>
+            <textarea class="wrong" placeholder="dog\nmoon"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Таймер (сек.)</label>
+            <input type="number" class="timer" value="30" min="5">
+          </div>
+        </div>
+      `;
+      wrap.querySelector('.del').onclick = () => { wrap.remove(); renumber(); };
+      wrap.querySelector('.up').onclick  = () => { const p=wrap.previousElementSibling; if(p){ wrap.parentNode.insertBefore(wrap,p); renumber(); } };
+      wrap.querySelector('.down').onclick= () => { const n=wrap.nextElementSibling; if(n){ wrap.parentNode.insertBefore(n,wrap); renumber(); } };
+      return wrap;
+    }
+    function renumber(){ $$('#levels .level .num').forEach((el,i)=> el.textContent = i+1); }
+    function addLevel(){ $('#levels').appendChild(levelTemplate($$('#levels .level').length)); renumber(); }
+
+    function collectConfig(){
+      const levels = [];
+      $$('#levels .level').forEach(div=>{
+        levels.push({
+          target: div.querySelector('.target').value.trim(),
+          correct: div.querySelector('.correct').value.split('\n').map(s=>s.trim()).filter(Boolean),
+          wrong:   div.querySelector('.wrong').value.split('\n').map(s=>s.trim()).filter(Boolean),
+          timer:   Math.max(5, parseInt(div.querySelector('.timer').value||'30',10))
+        });
+      });
+
+      return {
+        language: $('#language').value,
+        font: $('#font').value,
+        fontSize: Math.max(10, parseInt($('#fontSize').value||'24',10)),
+        textColor: $('#textColor').value,
+        speed: Math.max(1, Math.min(10, parseInt($('#speed').value||'5',10))),
+        style: {
+          shape: $('#shape').value,
+          pad: Math.max(0, parseInt($('#pad').value||'22',10)),
+          bgColor: $('#bgColor').value,
+          bgImage: ($('#bgImages')?.value || '').trim(),
+          bgImages: parseBgList($('#bgImages')?.value || ''),
+          borderOn: $('#borderOn').checked,
+          borderColor: $('#borderColor').value,
+          borderWidth: Math.max(0, parseInt($('#borderWidth').value||'0', 10)),
+          shadow: $('#shadowOn').checked,
+          glow: $('#glowOn').checked,
+          glowColor: $('#glowColor').value,
+          fx3d: $('#fx3d').checked,
+          opacity: Math.max(0, Math.min(1, parseFloat($('#opacity').value||'1'))),
+          imgBox: Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10))),
+        },
+        player: {
+          img: ($('#playerImg')?.value || '').trim(),
+          width: parseInt($('#playerWidth')?.value||'100', 10),
+          height: parseInt($('#playerHeight')?.value||'100', 10)
+        },
+        randomLevels: false,
+        start: {
+          title: ($('#startTitle')?.value || '').trim(),
+          btnText: ($('#startBtnText')?.value || '').trim()
+        },
+        direction: (['down','up'].includes($('#direction')?.value) ? $('#direction').value : 'down'),
+        finalFeedback: $('#finalFeedback').value.trim(),
+        levels
+      };
+    }
+
+    function validate(cfg){
+      if(!cfg.levels.length) return 'Добавьте хотя бы один уровень.';
+      for(const [i,lv] of cfg.levels.entries()){
+        if(!lv.target) return `Уровень ${i+1}: укажите target.`;
+        if(lv.correct.length===0 && lv.wrong.length===0) return `Уровень ${i+1}: добавьте объекты.`;
+      }
+      return null;
+    }
+
+    // === ПУБЛИКАЦИЯ НА CATCHER REPO ===
+    const ENDPOINT    = "https://server-kjnn.onrender.com/publish";
+    const PUBLISH_KEY = "nika_read_pub_2025";
+    // ВНИМАНИЕ: Здесь обновлен репозиторий на Catcher
+    const BASE_MAIN   = "https://nikashum93.github.io/catcher/main.html";
+
+    async function publish(){
+      const cfg = collectConfig();
+      const err = validate(cfg);
+      if(err){ alert(err); return; }
+      applyGoogleFont(cfg.font);
+      const id = makeIdFromFirstTarget(cfg);
+      const payload = {
+        id, mode: "json", folder: "data",
+        content: JSON.stringify(cfg, null, 2)
+      };
+      try{
+        const res = await fetch(ENDPOINT, {
+          method: "POST", headers: { "Content-Type": "application/json", "X-Publish-Key": PUBLISH_KEY },
+          body: JSON.stringify(payload)
+        });
+        if(!res.ok) throw new Error(await res.text());
+        const iframe = `<iframe src="${BASE_MAIN}?id=${encodeURIComponent(id)}" width="900" height="640" style="border:0;" allow="autoplay" allowfullscreen></iframe>`;
+        $('#iframeOut').value = iframe;
+        alert('Опубликовано! Подождите 30–60 секунд.');
+      }catch(e){ alert("Ошибка: " + e.message); }
+    }
+
+    function makeIdFromFirstTarget(cfg){
+      const slug = (cfg.levels[0]?.target||'game').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,30);
+      const d=new Date(),p=n=>String(n).padStart(2,'0');
+      const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+      return `${slug}-${stamp}`;
+    }
+
+    function quickTest(){
+      const cfg = collectConfig();
+      const err = validate(cfg);
+      if(err){ alert(err); return; }
+      alert('JSON валиден. Режим: ' + (cfg.player.img ? 'ЛОВЕЦ' : 'КЛИКИ'));
+      console.log(cfg);
+    }
+    function copyIframe(){
+      const v = $('#iframeOut').value.trim();
+      if(!v){ alert('Сначала опубликуйте.'); return; }
+      navigator.clipboard.writeText(v);
+    }
+
+    // События
+    $('#language').addEventListener('change', e=>{ fillFontsForLanguage(e.target.value); updatePreview(); });
+    $('#font').addEventListener('change', e=> { applyGoogleFont(e.target.value); updatePreview(); });
+    ['textColor','opacity','shape','bgColor','bgImages','borderColor','borderWidth','borderOn','shadowOn','glowOn','glowColor','fx3d','previewValue','speed','pad','direction','startTitle','startBtnText','imgBox','playerImg'].forEach(id => { 
+       if($('#'+id)) $('#'+id).addEventListener('input', updatePreview); 
+    });
+    $('#btnText').onclick = (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='text'; updatePreview(); }
+    $('#btnImage').onclick= (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='image'; updatePreview(); }
+    $('#addLevel').onclick = (e)=>{ e.preventDefault(); addLevel(); };
+    $('#saveBtn').onclick = publish;
+    $('#testBtn').onclick = quickTest;
+    $('#copyBtn').onclick = copyIframe;
+
+    fillLanguageSelect();
+    fillFontsForLanguage($('#language').value);
+    addLevel();
+    applyGoogleFont($('#font').value);
+    updatePreview();
+  </script>
+</body>
+</html>
