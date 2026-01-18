@@ -10,114 +10,130 @@
     body{ margin:0; background: transparent; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
     #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
-    /* HUD (ВЕРХНЯЯ ПАНЕЛЬ) */
+    /* --- HUD --- */
     .hud{
       position:fixed; left:12px; top:12px; right:12px; display:flex; gap:12px; 
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
     }
+    
     .badge{
-      /* Тёмный стиль плашек */
-      background:rgba(0,0,0,.65); 
-      border:1px solid rgba(255,255,255,.2);
-      border-radius:12px; padding:10px 16px; 
-      backdrop-filter:blur(6px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      color: var(--ui);
-      font-size: 18px;
-      text-transform: uppercase;
+      background: #111;              
+      border: 1px solid #444;        
+      border-radius: 8px;            
+      padding: 8px 16px; 
+      color: #fff;                   
+      font-size: 16px;
       letter-spacing: 0.5px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
+    
     .levelTitle{ 
-      color:#fff; 
-      text-shadow: 0 0 10px var(--glow);
+      color: var(--ui);              
+      text-transform: uppercase;
       max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
     }
 
-    /* ИГРОК */
+    /* --- ИГРОК --- */
     #player {
       position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
       z-index: 100; pointer-events: none; background-position: bottom center; 
       background-size: contain; background-repeat: no-repeat; will-change: left;
     }
-    
     .touch-zone { position: fixed; top:0; bottom:0; width: 50%; z-index: 5; }
     #zoneL { left: 0; } #zoneR { right: 0; }
 
-    /* OVERLAYS (ТЁМНЫЙ ДИЗАЙН) */
+    /* --- ЭКРАНЫ --- */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
-      background: rgba(0,0,0,0.8); /* Тёмное затемнение */
-      backdrop-filter:blur(8px); z-index:500;
+      background: rgba(0,0,0,0.85); z-index:500;
     }
     .overlay .panel{
       background: #1a1a1a; 
-      color:#fff; border:1px solid #333; border-radius:24px; 
-      padding:40px; text-align:center; 
-      box-shadow:0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,215,0,0.1);
+      color:#fff; border:1px solid #333; border-radius:16px; 
+      padding:30px; text-align:center; 
+      box-shadow:0 10px 40px rgba(0,0,0,0.5);
       max-width: 480px; width: 90%;
+      position: relative; z-index: 501;
+      max-height: 90vh; overflow-y: auto;
     }
-    .overlay h2{ margin:0 0 16px; font-size:32px; color:var(--ui); text-shadow: 0 0 20px rgba(255,215,0,0.3); }
-    .overlay p { color: #ccc; font-size: 18px; margin-bottom: 24px; }
+    .overlay h2{ margin:0 0 5px; font-size:26px; color:var(--ui); }
+    
+    /* Стили для Ранга */
+    .overlay h3.rank { 
+      margin: 0 0 15px; font-size: 24px; font-weight: 900;
+      background: linear-gradient(90deg, #fff, var(--glow), #fff); 
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-transform: uppercase; letter-spacing: 1px;
+      animation: pulseRank 2s infinite;
+    }
+    @keyframes pulseRank { 0%{opacity:0.8; transform:scale(0.98)} 50%{opacity:1; transform:scale(1.02)} 100%{opacity:0.8; transform:scale(0.98)} }
+
+    /* Таблица статистики */
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr; gap: 8px;
+      background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;
+      margin-bottom: 20px; font-size: 15px;
+    }
+    .stats-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+    .stats-row:last-child { border-bottom: none; padding-bottom: 0; margin-top: 5px; font-size: 18px; color: var(--ui); font-weight: bold; }
+
+    .overlay img.feedback-img { max-width: 100%; max-height: 180px; border-radius: 12px; margin-bottom: 15px; object-fit: contain; }
     
     .overlay button{
-      background: linear-gradient(135deg, #ffd700, #ffbf00); 
-      color:#000; border:0; border-radius:12px; 
-      padding:16px 32px; font-size:18px; font-weight:800; cursor:pointer; 
-      box-shadow: 0 10px 20px rgba(255, 215, 0, 0.2); 
-      transition: transform 0.1s, box-shadow 0.1s;
+      background: var(--ui); 
+      color:#000; border:0; border-radius:8px; 
+      padding:14px 28px; font-size:16px; font-weight:800; cursor:pointer; 
+      transition: transform 0.1s;
     }
-    .overlay button:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(255, 215, 0, 0.4); }
+    .overlay button:hover { transform: translateY(-2px); opacity: 0.9; }
 
-    /* ПАДАЮЩИЕ ЭЛЕМЕНТЫ */
+    /* --- ПАДАЮЩИЕ ЭЛЕМЕНТЫ --- */
     .item{
       position:absolute; top:-200px; left:0; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
       min-width:100px; min-height:80px; padding:0; user-select:none; cursor:pointer;
       z-index: 10;
+      box-sizing: border-box; 
     }
     
-    /* СЛОЙ ФОНА (Плашка) - Эффекты применяются СЮДА */
     .item .bg{
       position:absolute; inset:0; background: transparent; z-index: 0;
       background-position:center !important; background-size: cover !important;
-      transition:filter .15s; border-radius: 16px;
+      border-radius: 12px; transition: filter .15s;
     }
     
-    /* СЛОЙ ТЕКСТА - Чистый текст без эффектов плашки */
     .item .content{
       position:relative; z-index: 2; 
       display:flex; align-items:center; justify-content:center;
       text-align:center; padding: 12px;
       width: var(--cw, auto); height: var(--ch, auto);
-      /* Легкая тень только для читаемости текста */
-      text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 5px rgba(0,0,0,0.5);
-      font-weight: 700;
-      line-height: 1.2;
+      text-shadow: none !important; 
+      font-weight: 700; line-height: 1.2;
     }
-    .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
     
-    /* ФИГУРЫ И ЭФФЕКТЫ (Только для .bg) */
-    .shape-rect .bg { border-radius:8px }
+    .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
+    
+    .shape-rect .bg { border-radius:6px }
     .shape-rounded .bg { border-radius:20px }
     .shape-circle .bg { border-radius:50% }
     .shape-diamond .bg { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) }
     .shape-star .bg { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
     
-    .fx-shadow .bg{ box-shadow:0 10px 25px rgba(0,0,0,0.4) }
-    .fx-glow .bg{ box-shadow:0 0 15px var(--glow), inset 0 0 10px var(--glow) }
-    .fx-3d .bg{ box-shadow:0 6px 0 rgba(0,0,0,0.3) }
+    .fx-shadow .bg{ box-shadow:0 8px 20px rgba(0,0,0,0.3) }
+    .fx-glow .bg{ box-shadow:0 0 15px var(--glow) } 
+    .fx-3d .bg{ box-shadow:0 6px 0 rgba(0,0,0,0.2) }
 
     .score-float{
-      position:fixed; z-index:30; font-weight:900; font-size:28px;
-      text-shadow: 2px 2px 0 #000;
+      position:fixed; z-index:30; font-weight:900; font-size:24px;
+      text-shadow: 1px 1px 0 #000;
       animation:floatUp .8s ease-out forwards; pointer-events:none;
     }
     @keyframes floatUp{ 0%{ transform:translate(-50%,0); opacity:1 } 100%{ transform:translate(-50%,-60px); opacity:0 } }
-    .caught{ transform: scale(1.2); opacity: 0; transition: all 0.3s; }
     
-    /* Красный тинт ошибки - только на фон */
-    .tint-red .bg { animation: redFlash 0.4s; }
-    @keyframes redFlash { 0%, 100% { background-color: transparent; } 50% { background-color: rgba(255,0,0,0.5); } }
+    .caught{ transform: scale(1.1); opacity: 0; transition: all 0.2s; }
+    .tint-red .bg { background-color: rgba(255,0,0,0.7) !important; }
+
+    .firework { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 999; }
   </style>
 </head>
 <body>
@@ -139,33 +155,74 @@
     const $ = sel => document.querySelector(sel);
     const rnd = (a,b)=> a + Math.random()*(b-a);
     
-    // ВШИТЫЕ ЗВУКИ (BASE64) - РЕШЕНИЕ ПРОБЛЕМЫ 404
+    // --- ЛОКАЛИЗАЦИЯ И РАНГИ ---
+    const I18N = {
+      ru: { 
+        ranks: ["Новичок", "Ученик", "Ниндзя", "Грандмастер", "БОГ РЕАКЦИИ"],
+        stats: { hits: "Поймано", wrong: "Ошибки", missed: "Пропущено", total: "СЧЁТ" }
+      },
+      en: { 
+        ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"],
+        stats: { hits: "Caught", wrong: "Mistakes", missed: "Missed", total: "SCORE" }
+      },
+      de: { 
+        ranks: ["Anfänger", "Lehrling", "Ninja", "Großmeister", "REAKTIONSGOTT"],
+        stats: { hits: "Gefangen", wrong: "Fehler", missed: "Verpasst", total: "PUNKTE" }
+      },
+      es: { 
+        ranks: ["Novato", "Aprendiz", "Ninja", "Gran Maestro", "DIOS DE LA REACCIÓN"],
+        stats: { hits: "Atrapados", wrong: "Errores", missed: "Perdidos", total: "PUNTOS" }
+      },
+      it: { 
+        ranks: ["Novizio", "Apprendista", "Ninja", "Gran Maestro", "DIO DELLA REAZIONE"],
+        stats: { hits: "Presi", wrong: "Errori", missed: "Persi", total: "PUNTI" }
+      },
+      fr: { 
+        ranks: ["Novice", "Apprenti", "Ninja", "Grand Maître", "DIEU DE LA RÉACTION"],
+        stats: { hits: "Attrapés", wrong: "Erreurs", missed: "Ratés", total: "SCORE" }
+      },
+      zh: { 
+        ranks: ["新手", "学徒", "忍者", "特级大师", "反应之神"],
+        stats: { hits: "捕获", wrong: "错误", missed: "错过", total: "总分" }
+      },
+      ja: { 
+        ranks: ["初心者", "見習い", "忍者", "グランドマスター", "反射神経の神"],
+        stats: { hits: "捕獲", wrong: "ミス", missed: "逃した", total: "スコア" }
+      },
+      math: { // Math mode uses English defaults
+        ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"],
+        stats: { hits: "Solved", wrong: "Errors", missed: "Missed", total: "SCORE" }
+      }
+    };
+
+    function t(lang, key){
+      const dict = I18N[lang] || I18N.en;
+      return dict[key] || I18N.en[key];
+    }
+
+    // --- ЗВУКИ ---
     const SND = {
-      pop: new Audio("data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG1xUAALDkAALDkAAAL5hIAAAAB3MD+0AAFiigAAACgAAAAEAAAABAAAAAAEAAVwAAAAAA//uQZAUAB1WI0PZugAAAAAoAAAAENlI1BJJRgAAAAAoAAAAESTkUAADw8H9Bqd87576fn7t2tQEwCTv5pwcAA5N0O68brN1q8w16tWqWrVvrPBzRF+8nHGeKiZO05J08wN//uQZBmABfcjW90lAAPAAAAAAAB7DxOFQU4KAAAAACgAAAAxBMjCoVCqSauydM8yN//uQZBsABct4JAdpQAQAAAAAAABCwwMy67wbA9kTrp7slH/84e9m/7f/yH//uQZBwABf5JpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA//uQZB0ABi54oAdpQAQAAAAAAABC58O6778Lp9k7rq7slH/84e9m/7f/yH//uQZCAABfVJpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA//uQZCEABi54oAdpQAQAAAAAAABC58O6778Lp9k7rq7slH/84e9m/7f/yH//uQZCUABfVJpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA"),
-      wrong: new Audio("data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG1xUAALDkAALDkAAAL5hIAAAAB3MD+0AAFiigAAACgAAAAEAAAABAAAAAAEAAVwAAAAAA//uQZAUAB1WI0PZugAAAAAoAAAAENlI1BJJRgAAAAAoAAAAESTkUAADw8H9Bqd87576fn7t2tQEwCTv5pwcAA5N0O68brN1q8w16tWqWrVvrPBzRF+8nHGeKiZO05J08wN//uQZBmABfcjW90lAAPAAAAAAAB7DxOFQU4KAAAAACgAAAAxBMjCoVCqSauydM8yN//uQZBsABct4JAdpQAQAAAAAAABCwwMy67wbA9kTrp7slH/84e9m/7f/yH//uQZBwABf5JpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA//uQZB0ABi54oAdpQAQAAAAAAABC58O6778Lp9k7rq7slH/84e9m/7f/yH//uQZCAABfVJpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA//uQZCEABi54oAdpQAQAAAAAAABC58O6778Lp9k7rq7slH/84e9m/7f/yH//uQZCUABfVJpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA"),
-      win: new Audio("data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG1xUAALDkAALDkAAAL5hIAAAAB3MD+0AAFiigAAACgAAAAEAAAABAAAAAAEAAVwAAAAAA//uQZAUAB1WI0PZugAAAAAoAAAAENlI1BJJRgAAAAAoAAAAESTkUAADw8H9Bqd87576fn7t2tQEwCTv5pwcAA5N0O68brN1q8w16tWqWrVvrPBzRF+8nHGeKiZO05J08wN//uQZBmABfcjW90lAAPAAAAAAAB7DxOFQU4KAAAAACgAAAAxBMjCoVCqSauydM8yN//uQZBsABct4JAdpQAQAAAAAAABCwwMy67wbA9kTrp7slH/84e9m/7f/yH//uQZBwABf5JpQnmAAPAAAAAAABuJ+OPv39/394WHgAAAAB3IiAAuQAAAAAA")
+      pop: new Audio("https://github.com/NikaShum93/snow_quiz/raw/refs/heads/main/pop.mp3"),
+      wrong: new Audio("https://github.com/NikaShum93/snow_quiz/raw/refs/heads/main/wrong.mp3"),
+      win: new Audio("https://github.com/NikaShum93/snow_quiz/raw/refs/heads/main/win.mp3")
     };
     
     let cfg = null;
     let playerNode = null, playerPos = {x:0, v:0}, keys = {l:false, r:false};
-    let score=0, running=false, currentLevel=0;
-    
+    let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
+    let LANG = 'ru'; // По умолчанию
+
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
     const URL = `https://nikashum93.github.io/texts/data/${ID}.json`;
 
-    if(!ID) {
-      document.body.innerHTML = "<h2 style='text-align:center; color:#fff; margin-top:50px'>Нет ID игры.</h2>";
-    } else {
-      fetch(URL).then(r=>r.json()).then(startApp).catch(e=>{
-        console.error(e);
-        document.body.innerHTML = "<h2 style='text-align:center; color:#fff; margin-top:50px'>Ошибка загрузки.</h2>";
-      });
-    }
+    if(!ID) document.body.innerHTML = "<h2 style='text-align:center; color:#fff; margin-top:50px'>Нет ID игры.</h2>";
+    else fetch(URL).then(r=>r.json()).then(startApp).catch(console.error);
 
     function startApp(data){
       cfg = data;
-      // Шрифты
+      LANG = cfg.language || 'ru';
+      
       if(cfg.font) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -178,9 +235,9 @@
       setupPlayer();
       
       const ov = document.createElement('div'); ov.className='overlay';
-      const startTitle = cfg.start?.title || 'Game';
-      const startBtn = cfg.start?.btnText || 'Start';
-      ov.innerHTML = `<div class="panel"><h2>${startTitle}</h2><button id="btnStart">${startBtn}</button></div>`;
+      const tStart = cfg.start?.title || 'Game';
+      const bStart = cfg.start?.btnText || 'Start';
+      ov.innerHTML = `<div class="panel"><h2>${tStart}</h2><button id="btnStart">${bStart}</button></div>`;
       document.body.appendChild(ov);
       $('#btnStart').onclick = () => { ov.remove(); startGame(); };
     }
@@ -190,12 +247,10 @@
       img.style.cssText = "position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;transition:background-image 0.5s";
       document.body.appendChild(img);
       const list = cfg.style?.bgImages || [];
+      
       if(list.length) img.style.backgroundImage = `url(${list[0]})`;
       else if(cfg.style?.bgImage) img.style.backgroundImage = `url(${cfg.style.bgImage})`;
-      else {
-        // ЕСЛИ ФОНА НЕТ — ПРОЗРАЧНОСТЬ (ДЛЯ GENIALLY)
-        img.style.backgroundColor = 'transparent';
-      }
+      else img.style.backgroundColor = 'transparent'; 
       
       window.nextBg = () => {
          if(list.length) img.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`;
@@ -214,19 +269,19 @@
       
       playerPos.x = window.innerWidth/2;
       
-      window.onkeydown = e => { if(e.key==='ArrowLeft') keys.l=true; if(e.key==='ArrowRight') keys.r=true; };
-      window.onkeyup = e => { if(e.key==='ArrowLeft') keys.l=false; if(e.key==='ArrowRight') keys.r=false; };
+      const onKey = (k, s) => { if(k==='ArrowLeft') keys.l=s; if(k==='ArrowRight') keys.r=s; };
+      window.onkeydown = e => onKey(e.key, true);
+      window.onkeyup = e => onKey(e.key, false);
       
       const L=$('#zoneL'), R=$('#zoneR');
-      const downL = (e) => { if(e.preventDefault) e.preventDefault(); keys.l = true; };
-      const upL   = (e) => { if(e.preventDefault) e.preventDefault(); keys.l = false; };
-      const downR = (e) => { if(e.preventDefault) e.preventDefault(); keys.r = true; };
-      const upR   = (e) => { if(e.preventDefault) e.preventDefault(); keys.r = false; };
-
-      L.ontouchstart = downL; L.ontouchend = upL;
-      L.onmousedown = downL; L.onmouseup = upL; L.onmouseleave = upL;
-      R.ontouchstart = downR; R.ontouchend = upR;
-      R.onmousedown = downR; R.onmouseup = upR; R.onmouseleave = upR;
+      const bind = (el, k) => {
+        el.ontouchstart = e => { e.preventDefault(); keys[k]=true; };
+        el.ontouchend = e => { e.preventDefault(); keys[k]=false; };
+        el.onmousedown = () => keys[k]=true;
+        el.onmouseup = () => keys[k]=false;
+        el.onmouseleave = () => keys[k]=false;
+      };
+      bind(L, 'l'); bind(R, 'r');
       
       requestAnimationFrame(loopPlayer);
     }
@@ -238,6 +293,7 @@
       playerPos.v *= 0.85;
       playerPos.x += playerPos.v;
       
+      // ГРАНИЦЫ ИГРОКА
       const w = playerNode.offsetWidth;
       if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
       if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
@@ -248,7 +304,7 @@
     }
 
     function startGame(){
-      score=0; currentLevel=0; running=true;
+      score=0; hits=0; wrongClicks=0; missed=0; currentLevel=0; running=true;
       $('#hudScore').textContent = '0';
       startLevel();
     }
@@ -260,8 +316,7 @@
       window.nextBg();
       const lv = cfg.levels[currentLevel-1];
       
-      // ИСПРАВЛЕНИЕ: ВЫВОДИМ ТОЛЬКО TARGET (Цель)
-      $('#hudLevel').textContent = lv.target || `Уровень ${currentLevel}`;
+      $('#hudLevel').textContent = lv.target || `${currentLevel}`;
       
       let time = lv.timer || 30;
       $('#hudTimer').textContent = time;
@@ -297,17 +352,15 @@
       el.className = `item shape-${sty.shape} ${sty.shadow?'fx-shadow':''} ${sty.fx3d?'fx-3d':''} ${sty.glow?'fx-glow':''}`;
       el.dataset.good = data.g;
 
-      // СЛОЙ ФОНА (Плашка)
       const bg = document.createElement('div'); bg.className = 'bg';
+      
       if(sty.bgImages?.length) bg.style.backgroundImage = `url(${sty.bgImages[0]})`;
-      else bg.style.backgroundColor = sty.bgColor || 'rgba(255,255,255,0.2)';
+      else if(sty.bgColor) bg.style.backgroundColor = sty.bgColor;
+      else bg.style.backgroundColor = 'transparent'; 
       
-      // Прозрачность применяется ТОЛЬКО к фону
       bg.style.opacity = sty.opacity || 1;
-      
       if(sty.borderOn) bg.style.border = `2px solid ${sty.borderColor}`;
 
-      // СЛОЙ КОНТЕНТА (Текст/Картинка)
       const con = document.createElement('div'); con.className = 'content';
       if(data.v.startsWith('http')){
         con.innerHTML = `<img src="${data.v}">`;
@@ -321,7 +374,11 @@
       }
 
       el.appendChild(bg); el.appendChild(con);
-      el.style.left = rnd(20, window.innerWidth-100)+'px';
+      
+      // БЕЗОПАСНЫЙ СПАВН (отступ от краев)
+      const safeMargin = 80; 
+      const maxW = window.innerWidth - safeMargin;
+      el.style.left = rnd(40, maxW)+'px';
       
       if(!playerNode) el.onclick = () => catchItem(el);
 
@@ -332,12 +389,43 @@
       const dir = cfg.direction === 'up' ? -1 : 1;
       if(dir === -1) { y = window.innerHeight + 50; el.style.top = y+'px'; }
 
+      // Параметры покачивания
+      let t = Math.random() * 100;
+      
       function fall(){
         if(!el.parentNode) return;
+        t += 0.05;
         y += speed * dir;
+        
+        // --- 🚧 ЖЕСТКИЕ ГРАНИЦЫ И ПОКАЧИВАНИЕ ---
+        const sway = Math.sin(t) * 25; // амплитуда 25px
+        let curLeft = parseFloat(el.style.left);
+        const elW = el.offsetWidth || 100;
+        
+        // Математически ограничиваем X, чтобы не вылетал
+        // curLeft (базовая позиция) + sway (смещение) не должны выходить за [0, screenWidth]
+        let finalX = curLeft + sway;
+        
+        if (finalX < 10) { 
+           // Если улетает влево -> корректируем базу
+           curLeft += (10 - finalX); 
+           el.style.left = curLeft + 'px';
+        } else if (finalX > window.innerWidth - elW - 10) {
+           // Если улетает вправо -> корректируем базу
+           curLeft -= (finalX - (window.innerWidth - elW - 10));
+           el.style.left = curLeft + 'px';
+        }
+        
+        el.style.transform = `translateX(${sway}px)`;
         el.style.top = y + 'px';
-        if(y > window.innerHeight+100 || y < -200) el.remove();
-        else requestAnimationFrame(fall);
+        
+        if(y > window.innerHeight+100 || y < -200) {
+          // Улетел за экран
+          if(el.dataset.good === 'true') missed++; // Если был правильный - засчитываем пропуск
+          el.remove();
+        } else {
+          requestAnimationFrame(fall);
+        }
       }
       requestAnimationFrame(fall);
     }
@@ -360,11 +448,11 @@
       const isGood = el.dataset.good === 'true';
       
       if(isGood) {
-        score += 10;
+        score += 10; hits++;
         floatText(el, "+10", "#0f0");
         try{ SND.pop.currentTime=0; SND.pop.play() }catch(e){}
       } else {
-        score = Math.max(0, score-10);
+        score = Math.max(0, score-10); wrongClicks++;
         floatText(el, "-10", "#f00");
         try{ SND.wrong.currentTime=0; SND.wrong.play() }catch(e){}
         if(playerNode) {
@@ -372,6 +460,7 @@
             setTimeout(()=>playerNode.style.filter="", 300);
         }
         el.classList.add('tint-red');
+        setTimeout(()=>el.classList.remove('tint-red'), 300);
       }
       $('#hudScore').textContent = score;
       el.classList.add('caught');
@@ -392,14 +481,87 @@
       try{ SND.win.currentTime=0; SND.win.play() }catch(e){}
       ov.innerHTML = `<div class="panel"><h2>Level Complete!</h2><button onclick="this.closest('.overlay').remove();startLevel()">Next</button></div>`;
       document.body.appendChild(ov);
+      launchFireworks(15);
     }
     
     function gameOver(){
       const ov = document.createElement('div'); ov.className='overlay';
       try{ SND.win.currentTime=0; SND.win.play() }catch(e){}
-      const fb = cfg.finalFeedback || 'Good Job!';
-      ov.innerHTML = `<div class="panel"><h2>${fb}</h2><p>Score: ${score}</p><button onclick="location.reload()">Replay</button></div>`;
+      
+      // Расчет ранга
+      const ranks = t(LANG, 'ranks');
+      let rankIdx = 0;
+      if (score >= 50) rankIdx = 1;
+      if (score >= 150) rankIdx = 2;
+      if (score >= 300) rankIdx = 3;
+      if (score >= 500) rankIdx = 4;
+      const rankName = ranks[rankIdx];
+
+      // Тексты статистики
+      const TXT = t(LANG, 'stats');
+
+      // Фидбек (картинка или текст)
+      const fbVal = cfg.finalFeedback || 'Good Job!';
+      let fbContent = '';
+      if(/^https?:\/\//i.test(fbVal)) {
+         fbContent = `<img src="${fbVal}" class="feedback-img">`;
+      } else {
+         fbContent = `<h2>${fbVal}</h2>`;
+      }
+
+      ov.innerHTML = `
+        <div class="panel">
+           ${fbContent}
+           <h3 class="rank">${rankName}</h3>
+           
+           <div class="stats-grid">
+             <div class="stats-row"><span>✅ ${TXT.hits}</span> <b>${hits}</b></div>
+             <div class="stats-row"><span>❌ ${TXT.wrong}</span> <b>${wrongClicks}</b></div>
+             <div class="stats-row"><span>💨 ${TXT.missed}</span> <b>${missed}</b></div>
+             <div class="stats-row"><span>🏆 ${TXT.total}</span> <b>${score}</b></div>
+           </div>
+
+           <button onclick="location.reload()">Replay</button>
+        </div>`;
       document.body.appendChild(ov);
+      launchFireworks(40);
+    }
+
+    function launchFireworks(count){
+       for(let i=0; i<count; i++){
+          setTimeout(()=>{
+             const x = Math.random() * window.innerWidth;
+             const y = Math.random() * window.innerHeight * 0.6;
+             createFirework(x, y);
+          }, i * 300);
+       }
+    }
+
+    function createFirework(x, y) {
+      const colors = ['#ff0', '#f0f', '#0ff', '#0f0', '#f00'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.className = 'firework';
+        p.style.backgroundColor = color;
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        const angle = (Math.PI * 2 * i) / 20;
+        const speed = Math.random() * 5 + 2;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        document.body.appendChild(p);
+        let life = 100;
+        const anim = setInterval(() => {
+           const l = parseFloat(p.style.left);
+           const t = parseFloat(p.style.top);
+           p.style.left = (l + vx) + 'px';
+           p.style.top = (t + vy) + 'px';
+           p.style.opacity = life / 100;
+           life -= 2;
+           if(life <= 0) { clearInterval(anim); p.remove(); }
+        }, 20);
+      }
     }
   </script>
 </body>
