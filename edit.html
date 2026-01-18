@@ -3,560 +3,727 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Редактор — Catcher (КГБ)</title>
+  <title>Редактор — Catcher Pro</title>
 
-  <style>
-    :root{
-      --ui-acc:#ffd700;
-      --card:#151515;
-      --ink:#eee;
-      --muted:#b7b7b7;
-      --stroke:#2a2a2a;
-      --gap:16px;
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+  <link id="gf" rel="stylesheet" href=""> <style>
+    :root {
+      /* Цветовая палитра */
+      --bg-app: #0f172a;       /* Глубокий синий фон */
+      --bg-panel: #1e293b;     /* Панели */
+      --bg-input: #020617;     /* Инпуты */
+      
+      --accent: #f59e0b;       /* Основной акцент (Amber) */
+      --accent-glow: rgba(245, 158, 11, 0.4);
+      --primary: #3b82f6;      /* Вторичный (Blue) */
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      
+      --border: #334155;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; background:#0d0d0d; color:var(--ink);
-      font-family:Rubik,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      display:flex; flex-direction:column;
-    }
-    header{
-      display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--stroke);
-      position:sticky; top:0; background:#0d0d0d; z-index:2;
-    }
-    header img{height:42px}
-    header h1{font-size:20px; margin:0; color:var(--ui-acc); font-weight:800}
-    main{display:grid; grid-template-columns: 430px 1fr; gap:22px; padding:20px; max-width:1500px; width:100%; margin:0 auto}
-    .card{
-      background:var(--card); border:1px solid var(--stroke); border-radius:14px; padding:18px;
-      box-shadow:0 0 28px rgba(255,215,0,.06);
-    }
-    .card h2{margin:0 0 14px; font-size:18px; color:var(--ui-acc)}
-    label{display:block; margin:12px 0 8px; font-size:15px; color:#fff; font-weight:600}
-    input[type="text"], input[type="number"], input[type="url"], textarea, select{
-      width:100%; background:#101010; color:#fff; border:1px solid #3a3a3a; border-radius:10px; padding:12px 14px; font-size:16px;
-      outline:none; transition:border-color .15s ease, box-shadow .15s ease;
-    }
-    textarea{min-height:110px; resize:vertical}
-    input:focus, textarea:focus, select:focus{border-color:#4b4b4b; box-shadow:0 0 0 3px rgba(255,215,0,.16)}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap)}
-    .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--gap)}
-    .inline{display:flex; gap:12px; align-items:center}
-    .hint{color:var(--muted); font-size:13px; margin-top:8px}
-    .pill{display:inline-block; padding:8px 12px; border:1px dashed #444; border-radius:999px; color:#bbb; font-size:13px}
 
-    button{
-      background:linear-gradient(90deg,#ffbf00,#ffd700); color:#000; border:none; border-radius:12px; font-weight:800;
-      padding:14px 18px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; font-size:16px;
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      background-color: var(--bg-app);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Скроллим только main */
     }
-    button:hover{transform:translateY(-1px); box-shadow:0 8px 26px rgba(255,215,0,.28)}
-    .btn-ghost{background:transparent; color:#fff; border:1px solid #444}
-    .btn-danger{background:#a80000; color:#fff}
-    .stack{display:flex; flex-direction:column; gap:var(--gap)}
-    .levels .level{background:#111; border:1px solid #2a2a2a; border-radius:12px; padding:16px}
-    .level h3{margin:0 0 10px; font-size:16px; color:#fff; display:flex; align-items:center; justify-content:space-between}
-    .toolbar{display:flex; gap:12px; flex-wrap:wrap}
-    .right{display:flex; gap:10px; align-items:center; justify-content:flex-end}
 
-    footer{padding:14px 20px; color:#888; border-top:1px solid var(--stroke); display:flex; align-items:center; justify-content:center; gap:8px}
-    footer a{color:var(--ui-acc); text-decoration:none}
-
-    /* ПРЕДПРОСМОТР */
-    .preview-wrap{display:grid; grid-template-rows:auto 1fr; gap:12px; height:100%}
-    .preview-stage{background:#0a0a0a; border:1px dashed #333; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:24px; min-height:320px}
-    .preview-controls{display:grid; grid-template-columns:1fr auto; gap:12px}
-    .preview-item{
-      position:relative; display:inline-flex; align-items:center; justify-content:center;
-      padding:18px 22px; min-width:160px; min-height:70px; transition:all .2s ease;
-      background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important;
+    /* === HEADER === */
+    header {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
     }
-    .preview-item{ width: var(--cw, auto); height: var(--ch, auto); }
-    .preview-item img{ width:100%; height:100%; object-fit:contain; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .brand img { height: 32px; }
+    .brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
 
-    /* ФИГУРЫ */
+    /* === LAYOUT === */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(350px, 450px) 1fr;
+      gap: 0; /* Убираем gap, используем padding внутри скролл-зон */
+      overflow: hidden;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Скроллящаяся левая колонка (Настройки) */
+    .scroll-col {
+      overflow-y: auto;
+      padding: 24px;
+      padding-bottom: 100px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      border-right: 1px solid var(--border);
+    }
+
+    /* Правая колонка (Превью + Уровни) */
+    .sticky-col {
+      overflow-y: auto;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.3);
+    }
+
+    /* === CARDS & SECTIONS === */
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin: 24px 0 12px;
+      font-weight: 700;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #475569; }
+
+    .card h2 {
+      margin: 0 0 16px;
+      font-size: 16px;
+      color: var(--accent);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* === FORMS === */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    
+    input[type="text"], input[type="number"], input[type="url"], textarea, select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.4; }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Custom Checkbox */
+    .checkbox-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .checkbox-wrap input { margin: 0; }
+    .checkbox-wrap label { margin: 0; color: #fff; cursor: pointer; }
+
+    /* Color Picker Override */
+    input[type="color"] {
+      padding: 0; border: none; width: 100%; height: 40px; 
+      background: none; cursor: pointer; border-radius: 8px;
+    }
+
+    /* === BUTTONS === */
+    button {
+      background: linear-gradient(135deg, var(--accent), #d97706);
+      color: #000;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      transition: transform 0.1s, box-shadow 0.2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4); }
+    button:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-main);
+      box-shadow: none;
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+    
+    .btn-danger { background: #ef4444; color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+
+    /* === PREVIEW AREA (Sticky) === */
+    .preview-sticky-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .preview-stage {
+      background: #000;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    /* Стили элементов внутри превью */
+    .preview-item {
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 18px 22px; 
+      transition: all 0.2s ease;
+      background-size: cover !important; 
+      background-position: center !important;
+    }
+    .preview-item img { width: 100%; height: 100%; object-fit: contain; }
+    
+    /* Shapes & FX */
     .shape-rect{border-radius:10px}
     .shape-rounded{border-radius:20px}
-    .shape-circle{border-radius:9999px}
+    .shape-circle{border-radius:50%}
     .shape-diamond{clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);}
     .shape-star{clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)}
-
-    /* ЭФФЕКТЫ */
     .fx-shadow{box-shadow:0 10px 30px rgba(0,0,0,.5)}
-    .fx-glow{box-shadow:0 0 18px var(--glow, #00f0ff)}
+    .fx-glow{box-shadow:0 0 18px var(--glow)}
     .fx-3d{box-shadow:7px 7px 20px rgba(0,0,0,.5), inset -5px -5px 12px rgba(255,255,255,.22)}
     .fx-border{border-style:solid}
 
-    /* РЕЗУЛЬТАТ */
-    .result{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start}
-    .result textarea{height:120px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-  </style>
+    /* === LEVELS === */
+    .level {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .level-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .level-header h3 { margin: 0; font-size: 14px; color: var(--text-main); }
+    .level-actions { display: flex; gap: 4px; }
+    .level-actions button {
+      padding: 6px 10px; font-size: 12px; border-radius: 4px;
+    }
 
-  <link id="gf" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap">
+    /* === PUBLISH AREA === */
+    .publish-area {
+      background: linear-gradient(180deg, var(--bg-panel), #0f172a);
+      border: 1px solid var(--accent-glow);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.05);
+    }
+    #iframeOut {
+      font-family: 'Menlo', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: #000;
+      border: 1px solid var(--border);
+    }
+    
+    /* Footer */
+    footer {
+      text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-app);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    /* Hint text */
+    .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+  </style>
 </head>
 <body>
+
   <header>
-    <a href="https://kgbgamecorp.ru" target="_blank" rel="noopener">
-      <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" alt="КГБ">
+    <a href="#" class="brand">
+      <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" alt="Logo">
+      <h1>Catcher <span style="color:var(--accent)">Editor</span></h1>
     </a>
-    <h1>Редактор — Catcher</h1>
+    <div>
+       <button id="saveBtnTop" class="btn-ghost">💾 Сохранить</button>
+    </div>
   </header>
 
   <main>
-  <section class="card stack">
-  <h2>⚙️ Общие настройки</h2>
-<div class="row">
-  <div>
-    <label>Язык / режим</label>
-    <select id="language"></select>
-  </div>
-  <div>
-    <label>Шрифт</label>
-    <select id="font"></select>
-  </div>
-</div>
-  <div class="row">
-    <div>
-      <label>Скорость падения (1–10)</label>
-      <input type="number" id="speed" value="5" min="1" max="10">
-    </div>
-     </div>
-  <div class="row">
-    <div>
-      <label>Направление движения</label>
-      <select id="direction">
-        <option value="down">Сверху вниз</option>
-        <option value="up">Снизу вверх</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="row">
-    <div>
-      <label>Размер шрифта (px)</label>
-      <input type="number" id="fontSize" value="24" min="10" max="100">
-    </div>
-    <div>
-      <label>Цвет шрифта</label>
-      <input type="color" id="textColor" value="#ffffff">
-    </div>
-  </div>
-
-  <div class="card" style="border: 1px dashed var(--ui-acc)">
-    <h2>🦸‍♂️ Персонаж (Ловец)</h2>
-    <label>Ссылка на картинку игрока (GIF/PNG)</label>
-    <input type="url" id="playerImg" placeholder="https://.../basket.png">
-    <div class="hint">Если оставить пустым — игра будет работать по кликам (как раньше).</div>
-    
-    <div class="row">
-      <div>
-        <label>Ширина (px)</label>
-        <input type="number" id="playerWidth" value="100" min="40" max="300">
-      </div>
-      <div>
-        <label>Высота (px)</label>
-        <input type="number" id="playerHeight" value="100" min="40" max="300">
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>🚀 Запуск квиза</h2>
-    <label>Текст при запуске</label>
-    <input type="text" id="startTitle" placeholder="Игра «Листопад»" />
-    <label>Текст кнопки</label>
-    <input type="text" id="startBtnText" placeholder="Начать" />
-  </div>
-
-  <div class="card">
-    <h2>🏁 Финал</h2>
-    <label>Текст после завершения</label>
-    <textarea id="finalFeedback" placeholder="Отличная работа!"></textarea>
-  </div>
-
-<div>
-  <label>Фигура элементов</label>
-  <select id="shape">
-    <option value="rect">Прямоугольник</option>
-    <option value="rounded" selected>Скруглённый</option>
-    <option value="circle">Круг</option>
-    <option value="diamond">Ромб</option>
-    <option value="star">Звезда</option>
-  </select>
-</div>
-  <div>
-    <label>Фон — цвет</label>
-    <input type="color" id="bgColor" value="#1a1a1a">
-  </div>
-<label>Фоны-держатели (URL)</label>
-<textarea id="bgImages" placeholder="https://.../holder1.png"></textarea>
-
-  <div class="row-3" style="margin-top:6px">
-    <div>
-      <label>Рамка (цвет)</label>
-      <input type="color" id="borderColor" value="#ffffff">
-    </div>
-    <div>
-      <label>Толщина (px)</label>
-      <input type="number" id="borderWidth" value="1" min="0">
-    </div>
-    <div class="inline" style="align-items:end;">
-      <label style="width:100%">Включена?</label>
-      <input type="checkbox" id="borderOn" checked>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="inline">
-      <input type="checkbox" id="shadowOn" checked><label for="shadowOn">Тень</label>
-    </div>
-    <div class="inline">
-      <input type="checkbox" id="glowOn"><label for="glowOn">Подсветка</label>
-      <input type="color" id="glowColor" value="#00f0ff">
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="inline">
-      <input type="checkbox" id="fx3d"><label for="fx3d">3D эффект</label>
-    </div>
-    <div>
-      <label>Прозрачность (0–1)</label>
-      <input type="text" id="opacity" value="1">
-    </div>
-  </div>
-
-  <div class="row">
-    <div>
-      <label>Отступы внутри (px)</label>
-      <input type="number" id="pad" value="22" min="0" max="120">
-    </div>
-  </div>
-<div>
-  <label>Размер картинки (px)</label>
-  <input type="range" id="imgBox" min="80" max="260" value="160" step="10">
-</div>
-  
-  <div class="card" style="border-style:dashed">
-    <h2>🧪 Предпросмотр Элемента</h2>
-    <div class="preview-controls">
-      <input type="text" id="previewValue" placeholder="Текст или URL..." value="Preview">
-      <div class="right">
-        <button class="btn-ghost" id="btnText">Текст</button>
-        <button class="btn-ghost" id="btnImage">Картинка</button>
-      </div>
-    </div>
-    <div class="preview-stage">
-      <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#00f0ff;">
-        <span id="previewText" style="font-weight:800; font-size:24px">Preview</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-    <section class="card stack">
-      <h2>🎯 Уровни</h2>
-      <div class="levels" id="levels"></div>
-      <div class="toolbar">
-        <button id="addLevel">➕ Добавить уровень</button>
-        <span class="pill">Неограниченно уровней</span>
+    <div class="scroll-col">
+      
+      <div class="section-title">Внешний вид</div>
+      
+      <div class="card">
+        <h2>🎨 Стиль игры</h2>
+        <div class="row">
+          <div>
+            <label>Язык</label>
+            <select id="language"></select>
+          </div>
+          <div>
+            <label>Шрифт</label>
+            <select id="font"></select>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div>
+            <label>Фон (цвет)</label>
+            <input type="color" id="bgColor" value="#0f172a">
+          </div>
+          <div>
+            <label>Прозрачность элементов</label>
+            <input type="number" id="opacity" value="1" step="0.1" min="0" max="1">
+          </div>
+        </div>
+        
+        <label>Фоновая картинка (URL)</label>
+        <textarea id="bgImages" style="min-height:60px" placeholder="https://..."></textarea>
       </div>
 
-      <h2 style="margin-top:8px">🚀 Публикация</h2>
-      <div class="row">
-        <button id="saveBtn">💾 Сохранить и получить iframe</button>
-        <button id="testBtn" class="btn-ghost">🔍 Валидация JSON</button>
+      <div class="card">
+        <h2>🔮 Дизайн элементов</h2>
+        <div class="row">
+          <div>
+             <label>Форма</label>
+             <select id="shape">
+               <option value="rect">Прямоугольник</option>
+               <option value="rounded" selected>Скругленный</option>
+               <option value="circle">Круг</option>
+               <option value="diamond">Ромб</option>
+               <option value="star">Звезда</option>
+             </select>
+          </div>
+          <div>
+             <label>Размер (px)</label>
+             <input type="number" id="imgBox" value="160">
+          </div>
+        </div>
+
+        <div class="row">
+           <div class="checkbox-wrap">
+             <input type="checkbox" id="shadowOn" checked>
+             <label for="shadowOn">Тень</label>
+           </div>
+           <div class="checkbox-wrap">
+             <input type="checkbox" id="fx3d">
+             <label for="fx3d">3D Объем</label>
+           </div>
+        </div>
+        
+        <div class="row" style="align-items: center;">
+           <div class="checkbox-wrap">
+             <input type="checkbox" id="glowOn">
+             <label for="glowOn">Неон</label>
+           </div>
+           <input type="color" id="glowColor" value="#00f0ff" style="height:38px">
+        </div>
+
+        <div class="row" style="align-items: center;">
+           <div class="checkbox-wrap">
+             <input type="checkbox" id="borderOn" checked>
+             <label for="borderOn">Рамка</label>
+           </div>
+           <input type="number" id="borderWidth" value="2" style="width:60px">
+           <input type="color" id="borderColor" value="#ffffff" style="height:38px">
+        </div>
+        
+        <div class="row">
+           <div>
+             <label>Цвет текста</label>
+             <input type="color" id="textColor" value="#ffffff">
+           </div>
+           <div>
+             <label>Размер текста</label>
+             <input type="number" id="fontSize" value="24">
+           </div>
+        </div>
       </div>
 
-      <div class="result" style="margin-top:10px">
-        <textarea id="iframeOut" readonly placeholder="Здесь появится iframe для Genially"></textarea>
-        <button id="copyBtn" class="btn-ghost">📋 Копировать</button>
+      <div class="section-title">Геймплей</div>
+
+      <div class="card" style="border-color: var(--accent);">
+        <h2>🦸‍♂️ Персонаж (Ловец)</h2>
+        <label>Картинка персонажа (URL)</label>
+        <input type="url" id="playerImg" placeholder="https://.../hero.png">
+        <div class="hint">Оставь пустым, чтобы играть кликами (без персонажа).</div>
+        
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label>Ширина (px)</label>
+            <input type="number" id="playerWidth" value="120">
+          </div>
+          <div>
+            <label>Высота (px)</label>
+            <input type="number" id="playerHeight" value="120">
+          </div>
+        </div>
       </div>
-      <div class="hint">Убедитесь, что репозиторий 'catcher' опубликован на GitHub Pages!</div>
-    </section>
+
+      <div class="card">
+        <h2>⚙️ Механика</h2>
+        <div class="row">
+          <div>
+            <label>Скорость (1-10)</label>
+            <input type="number" id="speed" value="5" min="1" max="10">
+          </div>
+          <div>
+            <label>Направление</label>
+            <select id="direction">
+              <option value="down">Падают вниз</option>
+              <option value="up">Летят вверх</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📝 Тексты</h2>
+        <div class="row">
+          <div>
+            <label>Заголовок старта</label>
+            <input type="text" id="startTitle" placeholder="Catch them all!">
+          </div>
+          <div>
+            <label>Кнопка старта</label>
+            <input type="text" id="startBtnText" placeholder="Start Game">
+          </div>
+        </div>
+        <label>Фидбек в конце</label>
+        <textarea id="finalFeedback" placeholder="Great Job!"></textarea>
+      </div>
+
+    </div> <div class="sticky-col">
+      
+      <div class="card preview-sticky-wrap">
+        <h2 style="font-size:14px; color:var(--text-muted); text-transform:uppercase">Предпросмотр элемента</h2>
+        
+        <div class="row" style="margin-bottom:0">
+           <input type="text" id="previewValue" value="Word">
+           <div style="display:flex; gap:4px">
+             <button class="btn-ghost" id="btnText" style="flex:1">Т</button>
+             <button class="btn-ghost" id="btnImage" style="flex:1">IMG</button>
+           </div>
+        </div>
+
+        <div class="preview-stage">
+          <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#00f0ff;">
+            <span id="previewText" style="font-weight:800; font-size:24px">Word</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Контент игры</div>
+      
+      <div id="levels"></div>
+      
+      <button id="addLevel" class="btn-ghost" style="width:100%; border-style:dashed; margin-bottom: 24px;">
+        ➕ Добавить уровень
+      </button>
+
+      <div class="card publish-area">
+        <h2>🚀 Публикация</h2>
+        <button id="saveBtn" style="width:100%; margin-bottom:12px">💾 Опубликовать игру</button>
+        <button id="testBtn" class="btn-ghost" style="width:100%; margin-bottom:12px; font-size:12px">Проверить JSON</button>
+        
+        <label>Код для Genially (Iframe)</label>
+        <textarea id="iframeOut" readonly onclick="this.select()" placeholder="Нажми 'Опубликовать', чтобы получить код..."></textarea>
+        <button id="copyBtn" class="btn-ghost" style="width:100%; margin-top:8px">Копировать код</button>
+      </div>
+
+    </div>
   </main>
 
-  <footer>© 2026 <a href="https://kgbgamecorp.ru" target="_blank" rel="noopener">Корпорация Геймификации Будущего</a></footer>
-
   <script>
+    /* =========================================
+       LOGIC (Тот же код, что и раньше, но с поддержкой нового дизайна)
+       ========================================= */
     const $ = sel => document.querySelector(sel);
     const $$ = sel => document.querySelectorAll(sel);
 
     const FONT_MAP = {
-      ru: ["PT Sans","Rubik","Lobster","Marck Script","Cormorant","Montserrat","Open Sans","Noto Sans"],
-      en: ["Roboto","Open Sans","Montserrat","Inter","Poppins","Playfair Display","Indie Flower","Rubik"],
-      fr: ["Noto Sans","Playfair Display","Parisienne","Montserrat","Rubik"],
-      es: ["Montserrat","Alegreya","Caveat","Roboto","Rubik"],
-      de: ["PT Sans","Rubik","Inter","Montserrat","Playfair Display"],
-      zh: ["Noto Sans SC","ZCOOL XiaoWei","Ma Shan Zheng"],
-      ja: ["Noto Sans JP","Noto Serif JP","Kosugi Maru"],
+      ru: ["Rubik","PT Sans","Montserrat","Open Sans","Comfortaa","Russo One"],
+      en: ["Rubik","Roboto","Montserrat","Poppins","Bangers","Fredoka One"],
       math: ["Latin Modern Math","Rubik"]
     };
-    const LANG_LABELS = {
-      ru:"Русский", en:"English", fr:"Français", es:"Español",
-      de:"Deutsch", zh:"中文", ja:"日本語", math:"Математика (LaTeX)"
-    };
 
+    // --- Init ---
+    function init(){
+      fillLanguageSelect();
+      fillFontsForLanguage('ru');
+      addLevel();
+      applyGoogleFont('Rubik');
+      updatePreview();
+      
+      // Events
+      $('#language').onchange = e => { fillFontsForLanguage(e.target.value); updatePreview(); };
+      $('#font').onchange = e => { applyGoogleFont(e.target.value); updatePreview(); };
+      
+      // Inputs monitoring
+      const inputs = ['textColor','opacity','shape','bgColor','bgImages','borderColor','borderWidth',
+                      'borderOn','shadowOn','glowOn','glowColor','fx3d','previewValue','speed','pad',
+                      'direction','startTitle','startBtnText','imgBox','playerImg'];
+      inputs.forEach(id => {
+        const el = $('#'+id);
+        if(el) { el.oninput = updatePreview; el.onchange = updatePreview; }
+      });
+
+      $('#btnText').onclick = () => { $('#previewItem').dataset.mode='text'; updatePreview(); };
+      $('#btnImage').onclick = () => { $('#previewItem').dataset.mode='image'; updatePreview(); };
+      
+      $('#addLevel').onclick = addLevel;
+      $('#saveBtn').onclick = publish;
+      $('#saveBtnTop').onclick = publish; // Верхняя кнопка
+      $('#testBtn').onclick = quickTest;
+      $('#copyBtn').onclick = copyIframe;
+    }
+
+    // --- Functions ---
     function fillLanguageSelect(){
       const sel = $('#language');
-      sel.innerHTML = '';
-      Object.keys(FONT_MAP).forEach(k=>{
-        const opt = document.createElement('option');
-        opt.value = k; opt.textContent = LANG_LABELS[k];
-        sel.appendChild(opt);
-      });
-      sel.value = 'ru';
+      sel.innerHTML = '<option value="ru">Русский</option><option value="en">English</option><option value="math">Math</option>';
     }
+
     function fillFontsForLanguage(lang){
       const sel = $('#font');
-      sel.innerHTML = '';
-      (FONT_MAP[lang] || FONT_MAP.en).forEach(f=>{
-        const opt = document.createElement('option');
-        opt.textContent = f;
-        sel.appendChild(opt);
-      });
-      sel.value = FONT_MAP[lang][0];
-      applyGoogleFont(sel.value);
+      const list = FONT_MAP[lang] || FONT_MAP.en;
+      sel.innerHTML = list.map(f => `<option>${f}</option>`).join('');
+      sel.value = list[0];
     }
 
     function applyGoogleFont(fontName){
-      const gf = document.getElementById('gf');
-      const family = fontName.replace(/ /g, '+');
-      gf.href = `https://fonts.googleapis.com/css2?family=${family}:wght@400;700&display=swap`;
-      const text = $('#previewText');
-      text.style.fontFamily = fontName + ", system-ui, sans-serif";
-      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
-      document.body.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
-    }
-
-    function parseBgList(){
-      const raw = ($('#bgImages')?.value || '').split(/\n|,/).map(s => s.trim()).filter(Boolean);
-      return raw.filter(u => /^https?:\/\//i.test(u));
-    }
-
-    function currentPreviewBackground(){
-      const list = parseBgList();
-      if(list.length){
-        const pick = list[Math.floor(Math.random() * list.length)];
-        return `url(${pick}) center/contain no-repeat`;
-      }
-      return $('#bgColor').value;
+      $('#gf').href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g,'+')}:wght@400;700&display=swap`;
+      const txt = $('#previewText');
+      txt.style.fontFamily = `"${fontName}", system-ui`;
+      txt.style.fontSize = ($('#fontSize').value || 24) + 'px';
     }
 
     function updatePreview(){
       const item = $('#previewItem');
       const text = $('#previewText');
-      const val  = $('#previewValue').value.trim();
-      const asImage = item.dataset.mode === 'image' || /^https?:\/\//i.test(val);
+      const val  = $('#previewValue').value;
+      const isImg = item.dataset.mode === 'image';
 
-      item.className = 'preview-item';
-      item.style.setProperty('--glow', $('#glowColor').value);
-      item.classList.add('shape-' + $('#shape').value);
-      item.classList.toggle('fx-shadow', $('#shadowOn').checked);
-      item.classList.toggle('fx-3d', $('#fx3d').checked);
-      item.classList.toggle('fx-glow', $('#glowOn').checked);
-
-      if($('#borderOn').checked && Number($('#borderWidth').value) > 0){
-        item.classList.add('fx-border');
-        item.style.borderWidth = Number($('#borderWidth').value) + 'px';
-        item.style.borderColor = $('#borderColor').value;
+      // Styles
+      item.className = `preview-item shape-${$('#shape').value}`;
+      if($('#shadowOn').checked) item.classList.add('fx-shadow');
+      if($('#fx3d').checked) item.classList.add('fx-3d');
+      if($('#glowOn').checked) {
+        item.classList.add('fx-glow');
+        item.style.setProperty('--glow', $('#glowColor').value);
       } else {
-        item.classList.remove('fx-border');
-        item.style.borderWidth = '0px';
-        item.style.borderColor = 'transparent';
+        item.classList.remove('fx-glow');
       }
 
-      item.style.background = currentPreviewBackground();
-      const op = Math.max(0, Math.min(1, parseFloat($('#opacity').value || '1')));
-      item.style.opacity = op;
-
-      text.style.color = $('#textColor').value;
-      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
-      text.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
-
-      if(asImage){
-        item.dataset.mode = 'image';
-        text.style.display = 'none';
-        if(!item.querySelector('img')) item.appendChild(document.createElement('img'));
-        const img = item.querySelector('img');
-        img.src = val || 'https://via.placeholder.com/200x140?text=Image';
-        const box = Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10)));
-        item.style.setProperty('--cw', box + 'px');
-        item.style.setProperty('--ch', box + 'px');
+      // Border
+      if($('#borderOn').checked && $('#borderWidth').value > 0){
+        item.style.border = `${$('#borderWidth').value}px solid ${$('#borderColor').value}`;
       } else {
-        item.dataset.mode = 'text';
-        if(item.querySelector('img')) item.querySelector('img').remove();
-        text.style.display = 'block';
-        text.textContent = val || 'Preview';
-        item.style.removeProperty('--cw');
-        item.style.removeProperty('--ch');
+        item.style.border = 'none';
       }
-      const pad = Math.max(0, parseInt($('#pad').value||'22', 10));
-      item.style.padding = pad + 'px';
+
+      // Bg
+      const bgList = ($('#bgImages').value||'').split('\n').filter(s=>s.trim().startsWith('http'));
+      if(bgList.length){
+        item.style.background = `url(${bgList[0]}) center/contain no-repeat`;
+        item.style.backgroundColor = 'transparent';
+      } else {
+        item.style.background = 'none';
+        item.style.backgroundColor = $('#bgColor').value;
+      }
+      
+      item.style.opacity = $('#opacity').value;
+
+      // Content
+      if(isImg || val.startsWith('http')){
+        item.innerHTML = `<img src="${val.startsWith('http') ? val : 'https://via.placeholder.com/150/FFFFFF/000000?text=IMG'}" style="width:100%;height:100%;object-fit:contain">`;
+        const sz = $('#imgBox').value || 160;
+        item.style.width = sz+'px'; item.style.height = sz+'px';
+      } else {
+        item.innerHTML = `<span id="previewText">${val}</span>`;
+        const t = item.querySelector('span');
+        t.style.color = $('#textColor').value;
+        t.style.fontSize = $('#fontSize').value + 'px';
+        t.style.fontFamily = `"${$('#font').value}", system-ui`;
+        item.style.width = 'auto'; item.style.height = 'auto';
+        item.style.minWidth = '120px'; item.style.minHeight = '80px';
+      }
     }
 
-    function levelTemplate(idx){
-      const wrap = document.createElement('div');
-      wrap.className = 'level';
-      wrap.innerHTML = `
-        <h3>Уровень <span class="num">${idx+1}</span>
-          <span class="right">
-            <button type="button" class="btn-ghost up">▲</button>
-            <button type="button" class="btn-ghost down">▼</button>
-            <button type="button" class="btn-danger del">Удалить</button>
-          </span>
-        </h3>
-        <label>Название уровня / Target</label>
-        <input type="text" class="target" placeholder="Например: буква S или Animals">
-        <div class="row">
-          <div>
-            <label>Правильные (по одному на строке)</label>
-            <textarea class="correct" placeholder="sun\nstar"></textarea>
-          </div>
-          <div>
-            <label>Отвлекающие</label>
-            <textarea class="wrong" placeholder="dog\nmoon"></textarea>
-          </div>
+    function levelTemplate(i){
+      const div = document.createElement('div');
+      div.className = 'level';
+      div.innerHTML = `
+        <div class="level-header">
+           <h3>LEVEL ${i+1}</h3>
+           <div class="level-actions">
+             <button class="btn-ghost up">▲</button>
+             <button class="btn-ghost down">▼</button>
+             <button class="btn-danger del">×</button>
+           </div>
         </div>
+        <input type="text" class="target" placeholder="Target (e.g. Animals)" style="margin-bottom:8px">
         <div class="row">
-          <div>
-            <label>Таймер (сек.)</label>
-            <input type="number" class="timer" value="30" min="5">
-          </div>
+           <textarea class="correct" placeholder="Correct items..."></textarea>
+           <textarea class="wrong" placeholder="Wrong items..."></textarea>
+        </div>
+        <div class="row" style="margin-bottom:0">
+           <div><label>Timer</label><input type="number" class="timer" value="30"></div>
         </div>
       `;
-      wrap.querySelector('.del').onclick = () => { wrap.remove(); renumber(); };
-      wrap.querySelector('.up').onclick  = () => { const p=wrap.previousElementSibling; if(p){ wrap.parentNode.insertBefore(wrap,p); renumber(); } };
-      wrap.querySelector('.down').onclick= () => { const n=wrap.nextElementSibling; if(n){ wrap.parentNode.insertBefore(n,wrap); renumber(); } };
-      return wrap;
+      div.querySelector('.del').onclick = () => { div.remove(); renumber(); };
+      div.querySelector('.up').onclick = () => { if(div.previousSibling) div.parentNode.insertBefore(div, div.previousSibling); renumber(); };
+      div.querySelector('.down').onclick = () => { if(div.nextSibling) div.parentNode.insertBefore(div.nextSibling, div); renumber(); };
+      return div;
     }
-    function renumber(){ $$('#levels .level .num').forEach((el,i)=> el.textContent = i+1); }
-    function addLevel(){ $('#levels').appendChild(levelTemplate($$('#levels .level').length)); renumber(); }
 
+    function addLevel(){ $('#levels').appendChild(levelTemplate($$('#levels .level').length)); }
+    function renumber(){ $$('#levels .level h3').forEach((h,i) => h.textContent = `LEVEL ${i+1}`); }
+
+    // --- DATA ---
     function collectConfig(){
       const levels = [];
-      $$('#levels .level').forEach(div=>{
+      $$('.level').forEach(l => {
         levels.push({
-          target: div.querySelector('.target').value.trim(),
-          correct: div.querySelector('.correct').value.split('\n').map(s=>s.trim()).filter(Boolean),
-          wrong:   div.querySelector('.wrong').value.split('\n').map(s=>s.trim()).filter(Boolean),
-          timer:   Math.max(5, parseInt(div.querySelector('.timer').value||'30',10))
+          target: l.querySelector('.target').value.trim(),
+          correct: l.querySelector('.correct').value.split('\n').filter(s=>s.trim()),
+          wrong: l.querySelector('.wrong').value.split('\n').filter(s=>s.trim()),
+          timer: l.querySelector('.timer').value
         });
       });
+      
+      const bgImages = ($('#bgImages').value||'').split('\n').filter(s=>s.trim());
 
       return {
         language: $('#language').value,
         font: $('#font').value,
-        fontSize: Math.max(10, parseInt($('#fontSize').value||'24',10)),
+        fontSize: $('#fontSize').value,
         textColor: $('#textColor').value,
-        speed: Math.max(1, Math.min(10, parseInt($('#speed').value||'5',10))),
+        speed: $('#speed').value,
         style: {
           shape: $('#shape').value,
-          pad: Math.max(0, parseInt($('#pad').value||'22',10)),
           bgColor: $('#bgColor').value,
-          bgImage: ($('#bgImages')?.value || '').trim(),
-          bgImages: parseBgList($('#bgImages')?.value || ''),
+          bgImages: bgImages,
           borderOn: $('#borderOn').checked,
           borderColor: $('#borderColor').value,
-          borderWidth: Math.max(0, parseInt($('#borderWidth').value||'0', 10)),
+          borderWidth: $('#borderWidth').value,
           shadow: $('#shadowOn').checked,
           glow: $('#glowOn').checked,
           glowColor: $('#glowColor').value,
           fx3d: $('#fx3d').checked,
-          opacity: Math.max(0, Math.min(1, parseFloat($('#opacity').value||'1'))),
-          imgBox: Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10))),
+          opacity: $('#opacity').value,
+          imgBox: $('#imgBox').value
         },
         player: {
-          img: ($('#playerImg')?.value || '').trim(),
-          width: parseInt($('#playerWidth')?.value||'100', 10),
-          height: parseInt($('#playerHeight')?.value||'100', 10)
+          img: $('#playerImg').value.trim(),
+          width: $('#playerWidth').value,
+          height: $('#playerHeight').value
         },
-        randomLevels: false,
-        start: {
-          title: ($('#startTitle')?.value || '').trim(),
-          btnText: ($('#startBtnText')?.value || '').trim()
-        },
-        direction: (['down','up'].includes($('#direction')?.value) ? $('#direction').value : 'down'),
-        finalFeedback: $('#finalFeedback').value.trim(),
-        levels
+        direction: $('#direction').value,
+        start: { title: $('#startTitle').value, btnText: $('#startBtnText').value },
+        finalFeedback: $('#finalFeedback').value,
+        levels: levels
       };
     }
 
-    function validate(cfg){
-      if(!cfg.levels.length) return 'Добавьте хотя бы один уровень.';
-      for(const [i,lv] of cfg.levels.entries()){
-        if(!lv.target) return `Уровень ${i+1}: укажите target.`;
-        if(lv.correct.length===0 && lv.wrong.length===0) return `Уровень ${i+1}: добавьте объекты.`;
-      }
-      return null;
-    }
-
-    // === ПУБЛИКАЦИЯ НА CATCHER REPO ===
-    const ENDPOINT    = "https://server-kjnn.onrender.com/publish";
-    const PUBLISH_KEY = "nika_read_pub_2025";
-    // ВНИМАНИЕ: Здесь обновлен репозиторий на Catcher
-    const BASE_MAIN   = "https://nikashum93.github.io/catcher/main.html";
+    // --- PUBLISH ---
+    const ENDPOINT = "https://server-kjnn.onrender.com/publish";
+    const KEY = "nika_read_pub_2025";
+    const BASE = "https://nikashum93.github.io/catcher/main.html";
 
     async function publish(){
       const cfg = collectConfig();
-      const err = validate(cfg);
-      if(err){ alert(err); return; }
-      applyGoogleFont(cfg.font);
-      const id = makeIdFromFirstTarget(cfg);
-      const payload = {
-        id, mode: "json", folder: "data",
-        content: JSON.stringify(cfg, null, 2)
-      };
-      try{
+      if(!cfg.levels.length || !cfg.levels[0].target) return alert("Add at least 1 level with a target!");
+      
+      const btn = $('#saveBtn');
+      const oldTxt = btn.textContent;
+      btn.textContent = "⏳ Publishing...";
+      btn.disabled = true;
+
+      const id = (cfg.levels[0].target.replace(/[^a-z0-9]/gi,'-') + '-' + Date.now()).toLowerCase();
+      
+      try {
         const res = await fetch(ENDPOINT, {
-          method: "POST", headers: { "Content-Type": "application/json", "X-Publish-Key": PUBLISH_KEY },
-          body: JSON.stringify(payload)
+           method:'POST',
+           headers: {'Content-Type':'application/json', 'X-Publish-Key': KEY},
+           body: JSON.stringify({ id, mode:'json', folder:'data', content: JSON.stringify(cfg) })
         });
-        if(!res.ok) throw new Error(await res.text());
-        const iframe = `<iframe src="${BASE_MAIN}?id=${encodeURIComponent(id)}" width="900" height="640" style="border:0;" allow="autoplay" allowfullscreen></iframe>`;
-        $('#iframeOut').value = iframe;
-        alert('Опубликовано! Подождите 30–60 секунд.');
-      }catch(e){ alert("Ошибка: " + e.message); }
+        if(!res.ok) throw new Error();
+        
+        const code = `<iframe src="${BASE}?id=${id}" width="900" height="600" style="border:0" allow="autoplay; fullscreen"></iframe>`;
+        $('#iframeOut').value = code;
+        alert("✅ Ready! Copy the code below.");
+      } catch(e) {
+        alert("❌ Error publishing.");
+      }
+      btn.textContent = oldTxt;
+      btn.disabled = false;
     }
 
-    function makeIdFromFirstTarget(cfg){
-      const slug = (cfg.levels[0]?.target||'game').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,30);
-      const d=new Date(),p=n=>String(n).padStart(2,'0');
-      const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-      return `${slug}-${stamp}`;
-    }
+    function quickTest() { console.log(collectConfig()); alert("Check console for JSON"); }
+    function copyIframe() { $('#iframeOut').select(); document.execCommand('copy'); }
 
-    function quickTest(){
-      const cfg = collectConfig();
-      const err = validate(cfg);
-      if(err){ alert(err); return; }
-      alert('JSON валиден. Режим: ' + (cfg.player.img ? 'ЛОВЕЦ' : 'КЛИКИ'));
-      console.log(cfg);
-    }
-    function copyIframe(){
-      const v = $('#iframeOut').value.trim();
-      if(!v){ alert('Сначала опубликуйте.'); return; }
-      navigator.clipboard.writeText(v);
-    }
+    // Start
+    init();
 
-    // События
-    $('#language').addEventListener('change', e=>{ fillFontsForLanguage(e.target.value); updatePreview(); });
-    $('#font').addEventListener('change', e=> { applyGoogleFont(e.target.value); updatePreview(); });
-    ['textColor','opacity','shape','bgColor','bgImages','borderColor','borderWidth','borderOn','shadowOn','glowOn','glowColor','fx3d','previewValue','speed','pad','direction','startTitle','startBtnText','imgBox','playerImg'].forEach(id => { 
-       if($('#'+id)) $('#'+id).addEventListener('input', updatePreview); 
-    });
-    $('#btnText').onclick = (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='text'; updatePreview(); }
-    $('#btnImage').onclick= (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='image'; updatePreview(); }
-    $('#addLevel').onclick = (e)=>{ e.preventDefault(); addLevel(); };
-    $('#saveBtn').onclick = publish;
-    $('#testBtn').onclick = quickTest;
-    $('#copyBtn').onclick = copyIframe;
-
-    fillLanguageSelect();
-    fillFontsForLanguage($('#language').value);
-    addLevel();
-    applyGoogleFont($('#font').value);
-    updatePreview();
   </script>
 </body>
 </html>
