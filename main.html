@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Catcher Game</title>
+
+   <style>
+    :root{
+      --ui: #ffd700;
+      --ui-soft: rgba(255,215,0,.14);
+      --glow: #00f0ff;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; background: transparent; color:#fff; overflow:hidden;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    #game{ position:relative; width:100%; height:100%; overflow:hidden; }
+
+    /* HUD */
+    .hud{
+      position:fixed; left:12px; top:12px; right:12px;
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      font-weight:700; z-index:10; pointer-events:none;
+    }
+    .badge{
+      background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+      border-radius:12px; padding:10px 14px;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+    }
+    .levelTitle{ color:var(--ui) }
+    .timer, .score{min-width:110px; text-align:center}
+
+    /* ИГРОК */
+    #player {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      pointer-events: none;
+      background-position: center;
+      background-size: contain;
+      background-repeat: no-repeat;
+      will-change: left;
+    }
+    /* Зоны управления для телефона (невидимые) */
+    .touch-zone { position: fixed; top:0; bottom:0; width: 50%; z-index: 5; }
+    #zoneL { left: 0; }
+    #zoneR { right: 0; }
+
+    /* Оверлеи */
+    .overlay{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
+      background: none; color:#fff; z-index:20; gap:18px; pointer-events:auto;
+    }
+    .overlay .panel{
+      background: rgba(0,0,0,.65); border:1px solid rgba(255,255,255,.12);
+      border-radius:16px; padding:22px 26px; text-align:center; box-shadow:0 0 26px var(--ui-soft);
+      min-width:min(92vw,560px);
+    }
+    .overlay h2{ margin:6px 0 6px; font-size:24px; font-weight:900; color:var(--ui); }
+    .overlay button{
+      background:linear-gradient(90deg,#ffbf00,#ffd700); color:#000; border:0;
+      border-radius:10px; font-weight:900; padding:12px 16px; cursor:pointer;
+      transition:transform .12s;
+    }
+    .overlay button:hover{ transform:translateY(-1px); }
+
+    /* Падающие элементы */
+    .item{
+      position:absolute; top:-160px; left:0; transform:translateZ(0);
+      will-change:transform, top, left; display:inline-flex;
+      align-items:center; justify-content:center;
+      min-width:120px; min-height:80px; padding:0; user-select:none; cursor:pointer;
+    }
+    .item .bg{
+      position:absolute; inset:0; background: transparent; opacity:1;
+      transition:filter .15s ease;
+      background-position:center !important; background-repeat:no-repeat !important; background-size: contain !important;
+    }
+    .item .content{
+      position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+      text-align:center; line-height:1.15;
+      width: var(--cw, auto); height: var(--ch, auto);
+    }
+    .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
+    
+    .shape-rect    .bg{ border-radius:10px }
+    .shape-rounded .bg{ border-radius:20px }
+    .shape-circle  .bg{ border-radius:50% }
+    .shape-diamond .bg{ clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) }
+    .shape-star    .bg{ clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+    
+    .poly-border { box-shadow: inset 0 0 0 var(--bw, 1px) var(--bc, #fff); }
+    .fx-shadow .bg{ box-shadow:0 10px 30px rgba(0,0,0,.55) }
+    .fx-glow   .bg{ box-shadow:0 0 18px var(--glow, #00f0ff), 0 0 28px rgba(0,0,0,.25) }
+    .fx-border .bg{ border-style:solid }
+
+    .caught{ animation:pop .45s ease forwards }
+    @keyframes pop{ 0%{ transform:scale(1); opacity:1 } 100%{ transform:scale(0.85); opacity:0 } }
+    
+    .score-float{
+      position:fixed; z-index:30; font-weight:900;
+      text-shadow: 0 0 10px rgba(255,255,255,.5);
+      animation:floatUp .85s ease-out forwards; pointer-events:none;
+    }
+    @keyframes floatUp{ 0%{ transform:translate(-50%,-10px); opacity:0 } 10%{opacity:1} 100%{ transform:translate(-50%,-60px); opacity:0 } }
+    
+    .tint-red .bg { animation: redTintOnly 550ms ease; }
+    @keyframes redTintOnly { 0%{filter:none} 15%{filter:hue-rotate(-25deg) saturate(3) brightness(1.2)} 100%{filter:none} }
+  </style>
+  <script>
+    function loadGoogleFont(fontName){
+      if(!fontName) return;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;700&display=swap`;
+      document.head.appendChild(link);
+    }
+  </script>
+</head>
+<body>
+  <div class="hud">
+    <div class="badge levelTitle" id="hudLevel">—</div>
+    <div class="badge timer" id="hudTimer">00</div>
+    <div class="badge score" id="hudScore">0</div>
+  </div>
+
+  <div id="game" aria-live="polite">
+    <div id="touchLayer" style="display:none">
+       <div id="zoneL" class="touch-zone"></div>
+       <div id="zoneR" class="touch-zone"></div>
+    </div>
+  </div>
+
+  <audio id="popSound" src="pop.mp3" preload="auto"></audio>
+  <audio id="winSound" src="win.mp3" preload="auto"></audio>
+  <audio id="wrongSound" src="wrong.mp3" preload="auto"></audio>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    const I18N = {
+      ru:{ startBtn:"Начать", nextBtn:"Далее", restartBtn:"Снова", level:n=>`Уровень ${n}`, levelComplete:"Уровень пройден!", gameComplete:"Игра окончена!" },
+      en:{ startBtn:"Start", nextBtn:"Next", restartBtn:"Restart", level:n=>`Level ${n}`, levelComplete:"Level Complete!", gameComplete:"Game Over!" }
+    };
+    function t(lang,k){ return (I18N[lang]||I18N.ru)[k]||(I18N.ru)[k]; }
+
+    const $ = sel => document.querySelector(sel);
+    const rnd = (a,b)=> a + Math.random()*(b-a);
+    const clamp = (v,min,max)=> Math.max(min, Math.min(max,v));
+
+    const params = new URLSearchParams(location.search);
+    const GAME_ID = params.get('id');
+    const JSON_BASE = "https://nikashum93.github.io/texts/data/";
+
+    let cfg = null;
+    let LANG = 'ru';
+    
+    // Переменные для игрока
+    let playerNode = null;
+    let playerPos = { x: 0, v: 0 };
+    let keys = { left: false, right: false };
+    const FRICTION = 0.85;
+    const ACCEL = 1.5;
+
+    (async function boot(){
+      if(!GAME_ID){ showFatal("No ID", "Нет ID игры."); return; }
+      try{
+        const res = await fetch(`${JSON_BASE}${GAME_ID}.json?v=${Date.now()}`);
+        if(!res.ok) throw new Error();
+        cfg = await res.json();
+      }catch(e){ showFatal("Error", "Ошибка загрузки данных."); return; }
+
+      LANG = (cfg.language || 'ru').toLowerCase();
+      if(cfg.font) loadGoogleFont(cfg.font);
+      
+      const uiColor = (cfg.style?.borderColor || cfg.style?.glowColor) || '#ffd700';
+      document.documentElement.style.setProperty('--ui', uiColor);
+      document.documentElement.style.setProperty('--ui-soft', uiColor + '22');
+      if (cfg.style?.glowColor) document.documentElement.style.setProperty('--glow', cfg.style.glowColor);
+
+      setupBackgrounds();
+      updateHUD(1);
+      showStartOverlay();
+    })();
+
+    function setupBackgrounds(){
+      const list = Array.isArray(cfg.style?.bgImages) ? cfg.style.bgImages : [];
+      const bgEl = document.createElement('img');
+      Object.assign(bgEl.style, { position:'fixed', inset:0, width:'100%', height:'100%', objectFit:'cover', zIndex:'-1', pointerEvents:'none' });
+      document.body.prepend(bgEl);
+      window.changeBg = () => {
+        if(list.length) bgEl.src = list[Math.floor(Math.random()*list.length)];
+        else if(cfg.style?.bgImage) bgEl.src = cfg.style.bgImage;
+      };
+      window.changeBg();
+    }
+
+    /* === ИГРОК И ФИЗИКА === */
+    function setupPlayer() {
+      if (!cfg.player || !cfg.player.img) return; // Режим кликов
+
+      playerNode = document.createElement('div');
+      playerNode.id = 'player';
+      const W = cfg.player.width || 100;
+      const H = cfg.player.height || 100;
+      
+      playerNode.style.width = W + 'px';
+      playerNode.style.height = H + 'px';
+      playerNode.style.backgroundImage = `url(${cfg.player.img})`;
+      
+      const gw = $('#game').clientWidth;
+      playerPos.x = gw / 2;
+      playerPos.v = 0;
+      
+      $('#game').appendChild(playerNode);
+      $('#touchLayer').style.display = 'block';
+      
+      setupControls();
+      requestAnimationFrame(playerLoop);
+    }
+
+    function setupControls() {
+      window.addEventListener('keydown', e => {
+        if(e.code === 'ArrowLeft') keys.left = true;
+        if(e.code === 'ArrowRight') keys.right = true;
+      });
+      window.addEventListener('keyup', e => {
+        if(e.code === 'ArrowLeft') keys.left = false;
+        if(e.code === 'ArrowRight') keys.right = false;
+      });
+
+      const L = $('#zoneL'), R = $('#zoneR');
+      const downL = (e) => { if(e.preventDefault) e.preventDefault(); keys.left = true; };
+      const upL   = (e) => { if(e.preventDefault) e.preventDefault(); keys.left = false; };
+      const downR = (e) => { if(e.preventDefault) e.preventDefault(); keys.right = true; };
+      const upR   = (e) => { if(e.preventDefault) e.preventDefault(); keys.right = false; };
+
+      L.onmousedown = downL; L.onmouseup = upL; L.onmouseleave = upL;
+      R.onmousedown = downR; R.onmouseup = upR; R.onmouseleave = upR;
+      L.ontouchstart = downL; L.ontouchend = upL;
+      R.ontouchstart = downR; R.ontouchend = upR;
+    }
+
+    function playerLoop() {
+      if (!running || !playerNode) return;
+      if (keys.left) playerPos.v -= ACCEL;
+      if (keys.right) playerPos.v += ACCEL;
+      
+      playerPos.v *= FRICTION;
+      playerPos.x += playerPos.v;
+
+      const gw = $('#game').clientWidth;
+      const pw = playerNode.offsetWidth;
+      const pad = 10;
+      
+      if (playerPos.x < pw/2 + pad) { playerPos.x = pw/2 + pad; playerPos.v = 0; }
+      if (playerPos.x > gw - pw/2 - pad) { playerPos.x = gw - pw/2 - pad; playerPos.v = 0; }
+
+      playerNode.style.left = playerPos.x + 'px';
+      checkCollisions();
+      requestAnimationFrame(playerLoop);
+    }
+
+    function checkCollisions() {
+      if (!playerNode) return;
+      const pRect = playerNode.getBoundingClientRect();
+      const hitBox = {
+        left: pRect.left + pRect.width * 0.2,
+        right: pRect.right - pRect.width * 0.2,
+        top: pRect.top + pRect.height * 0.2,
+        bottom: pRect.bottom - pRect.height * 0.1
+      };
+
+      document.querySelectorAll('.item').forEach(item => {
+        if (item.classList.contains('caught') || item.classList.contains('processed')) return;
+        const iRect = item.getBoundingClientRect();
+        const overlap = !(hitBox.right < iRect.left || hitBox.left > iRect.right || hitBox.bottom < iRect.top || hitBox.top > iRect.bottom);
+
+        if (overlap) {
+          item.classList.add('processed');
+          processCatch(item, item.dataset.good === '1');
+        }
+      });
+    }
+
+    function processCatch(el, isGood) {
+      if (isGood) {
+        streak++;
+        const pts = Math.round(SPEED.basePts * (1 + (streak - 1) * 0.25));
+        score += pts; hits++;
+        $('#hudScore').textContent = score;
+        popScore(el, `+${pts}`);
+        try{ $('#popSound').currentTime=0; $('#popSound').play(); }catch(_){}
+        el.classList.add('caught');
+        setTimeout(()=> el.remove(), 380);
+      } else {
+        wrongClicks++; streak = 0;
+        const pts = Math.max(1, Math.ceil(SPEED.basePts * 0.5));
+        score = Math.max(0, score - pts);
+        $('#hudScore').textContent = score;
+        if(playerNode) {
+          playerNode.style.filter = 'grayscale(1) brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5)';
+          setTimeout(()=> playerNode.style.filter = '', 300);
+        }
+        popScore(el, `-${pts}`);
+        try{ $('#wrongSound').currentTime=0; $('#wrongSound').play(); }catch(_){}
+        el.classList.add('caught');
+        setTimeout(()=> el.remove(), 200);
+      }
+    }
+
+    /* === ГЕЙМПЛЕЙ === */
+    let score=0, hits=0, wrongClicks=0, missed=0, streak=0, running=false;
+    let currentLevel=0, SPEED={vel:1.5, spawn:1000, basePts:20};
+    
+    function startGame(){
+      SPEED = computeSpeed(cfg?.speed ?? 5);
+      score=0; hits=0; wrongClicks=0; missed=0; streak=0;
+      $('#hudScore').textContent = '0';
+      if(cfg.randomLevels && Array.isArray(cfg.levels)) cfg.levels.sort(()=>Math.random()-0.5);
+      
+      currentLevel=0; running=true;
+      
+      // Инициализация игрока, если он есть
+      setupPlayer();
+      
+      startLevel();
+    }
+
+    function startLevel(){
+      currentLevel++;
+      if(window.changeBg) window.changeBg();
+      const levels = cfg.levels || [];
+      if(currentLevel > levels.length){ endGame(); return; }
+
+      updateHUD(currentLevel);
+      const lv = levels[currentLevel-1];
+      let timeLeft = Math.max(5, Number(lv.timer || 30));
+      $('#hudTimer').textContent = timeLeft;
+      
+      const tm = setInterval(()=>{
+        if(!running) return clearInterval(tm);
+        timeLeft--;
+        $('#hudTimer').textContent = timeLeft;
+        if(timeLeft<=0){
+          clearInterval(tm);
+          if(spawnTimer) clearTimeout(spawnTimer);
+          document.querySelectorAll('.item').forEach(n=>n.remove());
+          try{ $('#winSound').currentTime=0; $('#winSound').play(); }catch(_){}
+          showLevelCompleteOverlay(currentLevel, levels.length, startLevel);
+        }
+      }, 1000);
+
+      spawnRoutine(lv);
+    }
+
+    let spawnTimer = null;
+    function spawnRoutine(lv){
+      const pool = [...(lv.correct||[]).map(v=>({v,g:true})), ...(lv.wrong||[]).map(v=>({v,g:false}))];
+      if(!pool.length) return;
+      pool.sort(()=>Math.random()-0.5);
+      
+      let idx=0;
+      const next = () => {
+        if(!running) return;
+        if(document.querySelectorAll('.item').length < 6){
+          drop(pool[idx % pool.length]);
+          idx++;
+        }
+        spawnTimer = setTimeout(next, rnd(SPEED.spawn*0.7, SPEED.spawn*1.3));
+      };
+      next();
+    }
+
+    function drop(obj){
+      const el = document.createElement('div');
+      const sty = cfg.style || {};
+      el.className = `item shape-${sty.shape||'rounded'} ${sty.shadow?'fx-shadow':''} ${sty.fx3d?'fx-3d':''} ${sty.glow?'fx-glow':''} ${sty.borderOn&&sty.borderWidth>0?'fx-border':''}`;
+      el.dataset.good = obj.g ? '1' : '0';
+      
+      const bg = document.createElement('div'); bg.className='bg';
+      if(sty.bgImages?.length) bg.style.backgroundImage = `url(${sty.bgImages[Math.floor(Math.random()*sty.bgImages.length)]})`;
+      else if(sty.bgImage) bg.style.backgroundImage = `url(${sty.bgImage})`;
+      else bg.style.backgroundColor = sty.bgColor || 'transparent';
+      
+      // Рамка для фигур
+      if(sty.borderOn && sty.borderWidth>0){
+        const bw = sty.borderWidth+'px', bc=sty.borderColor||'#fff';
+        if(['diamond','star'].includes(sty.shape)){
+           bg.classList.add('poly-border'); bg.style.setProperty('--bw',bw); bg.style.setProperty('--bc',bc);
+        } else { bg.style.border = `${bw} solid ${bc}`; }
+      }
+      
+      const content = document.createElement('div'); content.className='content';
+      if(/^https?:\/\//.test(obj.v)){
+         const img=document.createElement('img'); img.src=obj.v; content.appendChild(img);
+         content.style.setProperty('--cw', (sty.imgBox||160)+'px'); content.style.setProperty('--ch', (sty.imgBox||160)+'px');
+      } else {
+         const sp=document.createElement('span'); sp.textContent = obj.v; 
+         sp.style.fontSize=(cfg.fontSize||24)+'px'; sp.style.fontFamily=cfg.font;
+         if((cfg.language||'')==='math') sp.textContent = `\\(${obj.v}\\)`;
+         content.appendChild(sp);
+      }
+      
+      el.appendChild(bg); el.appendChild(content);
+      
+      const gw = $('#game').clientWidth;
+      el.style.left = rnd(20, gw-140) + 'px';
+      el.style.top = '-150px';
+      $('#game').appendChild(el);
+      
+      if((cfg.language||'')==='math') MathJax.typesetPromise([el]);
+      
+      // Если НЕТ игрока, включаем клики
+      if(!playerNode){
+        el.onclick = () => { if(el.dataset.good==='1') processCatch(el, true); else processCatch(el, false); };
+      }
+
+      // Падение
+      let y = -150, t = 0;
+      const fall = () => {
+        if(!el.parentNode) return;
+        y += SPEED.vel;
+        t++;
+        el.style.top = y + 'px';
+        el.style.transform = `translateX(${Math.sin(t*0.02)*15}px)`;
+        if(y > window.innerHeight + 100){
+           if(el.dataset.good==='1') missed++;
+           el.remove();
+        } else requestAnimationFrame(fall);
+      };
+      requestAnimationFrame(fall);
+    }
+
+    function computeSpeed(s){
+      s = clamp(Number(s), 1, 10);
+      return { vel: 0.8 + (s-1)*0.5, spawn: 1500 - (s-1)*120, basePts: 10+(s*5) };
+    }
+
+    function updateHUD(cur){
+      const title = cfg.levels[cur-1]?.target || '';
+      const isMath = cfg.language==='math';
+      $('#hudLevel').innerHTML = `${t(LANG,'level', cur)}: ${isMath?`\\(${title}\\)`:title}`;
+      if(isMath) MathJax.typesetPromise([$('#hudLevel')]);
+    }
+
+    function showStartOverlay(){
+      const ov = document.createElement('div'); ov.className='overlay';
+      const title = cfg.start?.title || 'Game';
+      const btn = cfg.start?.btnText || t(LANG,'startBtn');
+      ov.innerHTML = `<div class="panel"><h2>${title}</h2><button id="btnStart">${btn}</button></div>`;
+      document.body.appendChild(ov);
+      $('#btnStart').onclick = ()=>{ ov.remove(); startGame(); };
+    }
+    
+    function showLevelCompleteOverlay(c,t,cb){
+      const ov = document.createElement('div'); ov.className='overlay';
+      ov.innerHTML = `<div class="panel"><h2>${I18N[LANG].levelComplete}</h2><button id="btnNext">${I18N[LANG].nextBtn}</button></div>`;
+      document.body.appendChild(ov);
+      $('#btnNext').onclick = ()=>{ ov.remove(); cb(); };
+    }
+
+    function endGame(){
+      const ov = document.createElement('div'); ov.className='overlay';
+      const fb = cfg.finalFeedback || I18N[LANG].gameComplete;
+      ov.innerHTML = `<div class="panel"><h2>${I18N[LANG].gameComplete}</h2><p>${fb}</p>
+      <div>Score: ${score} | Hits: ${hits} | Wrong: ${wrongClicks}</div>
+      <button id="btnR">${I18N[LANG].restartBtn}</button></div>`;
+      document.body.appendChild(ov);
+      $('#btnR').onclick = ()=>location.reload();
+    }
+
+    function showFatal(t,m){ document.body.innerHTML=`<h2 style="color:red;text-align:center">${t}</h2><p style="text-align:center">${m}</p>`; }
+    function popScore(el, txt){
+      const d = document.createElement('div'); d.className='score-float'; d.textContent=txt;
+      const r = el.getBoundingClientRect(); d.style.left=(r.left+r.width/2)+'px'; d.style.top=r.top+'px'; d.style.color='var(--ui)';
+      document.body.appendChild(d); setTimeout(()=>d.remove(),900);
+    }
+  </script>
+</body>
+</html>
