@@ -5,149 +5,115 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Catcher Game</title>
   <style>
-    :root{ --ui: #ffd700; --glow: #00f0ff; }
+    :root{ --ui: #ffd700; --glow: #00f0ff; --ui-soft: rgba(255,215,0,.14); }
+    
+    /* === БАЗА - ПРОЗРАЧНЫЙ ФОН === */
     html,body{height:100%}
-    /* ФОН ИГРЫ ВСЕГДА ПРОЗРАЧНЫЙ ПО УМОЛЧАНИЮ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
     #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
-    /* --- HUD --- */
+    /* === HUD === */
     .hud{
       position:fixed; left:12px; top:12px; right:12px; display:flex; gap:12px; 
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
     }
-    
     .badge{
-      /* Легкий эффект стекла и для HUD */
-      background: rgba(17, 17, 17, 0.7);              
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
-      border: 1px solid rgba(255, 255, 255, 0.2);        
-      border-radius: 8px;                    
-      padding: 8px 16px; 
-      color: #fff;                    
-      font-size: 16px;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      background: rgba(17, 17, 17, 0.7); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 8px 16px; 
+      color: #fff; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    
-    .levelTitle{ 
-      color: var(--ui);              
-      text-transform: uppercase;
-      max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-    }
+    .levelTitle{ color: var(--ui); max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* --- ИГРОК --- */
+    /* === ИГРОК === */
     #player {
       position: absolute; z-index: 100; pointer-events: none; 
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
     .touch-zone { position: fixed; z-index: 5; }
 
-    /* --- ЭКРАНЫ (СТЕКЛО) --- */
+    /* === ОВЕРЛЕИ (СТЕКЛО) === */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
-      /* Темный полупрозрачный фон для всего экрана */
-      background: rgba(0,0,0,0.4); 
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index:500;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index:500;
     }
-    
     .overlay .panel{
-      /* ЭФФЕКТ СТЕКЛА (iOS Style) */
-      background: rgba(30, 30, 30, 0.65); 
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      
-      color:#fff; 
-      border-radius:24px; /* Более круглые углы */
-      padding:40px; text-align:center; 
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-      max-width: 480px; width: 90%;
-      position: relative; z-index: 501;
-      max-height: 90vh; overflow-y: auto;
+      background: rgba(30, 30, 30, 0.65); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15); color:#fff; border-radius:24px;
+      padding:40px; text-align:center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      max-width: 480px; width: 90%; position: relative; z-index: 501; max-height: 90vh; overflow-y: auto;
     }
     .overlay h2{ margin:0 0 10px; font-size:32px; color:var(--ui); text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-    
     .overlay h3.rank { 
       margin: 0 0 15px; font-size: 24px; font-weight: 900;
-      background: linear-gradient(90deg, #fff, var(--glow), #fff); 
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      text-transform: uppercase; letter-spacing: 1px;
-      animation: pulseRank 2s infinite;
+      background: linear-gradient(90deg, #fff, var(--glow), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-transform: uppercase; letter-spacing: 1px; animation: pulseRank 2s infinite;
     }
     @keyframes pulseRank { 0%{opacity:0.8; transform:scale(0.98)} 50%{opacity:1; transform:scale(1.02)} 100%{opacity:0.8; transform:scale(0.98)} }
 
     .stats-grid {
       display: grid; grid-template-columns: 1fr; gap: 8px;
-      background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px;
-      margin-bottom: 25px; font-size: 15px;
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 15px; border: 1px solid rgba(255,255,255,0.05);
     }
     .stats-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
     .stats-row:last-child { border-bottom: none; padding-bottom: 0; margin-top: 5px; font-size: 18px; color: var(--ui); font-weight: bold; }
-
     .overlay img.feedback-img { max-width: 100%; max-height: 180px; border-radius: 12px; margin-bottom: 15px; object-fit: contain; }
-    
     .overlay button{
-      background: var(--ui); 
-      color:#000; border:0; border-radius:12px; 
+      background: var(--ui); color:#000; border:0; border-radius:12px; 
       padding:16px 32px; font-size:18px; font-weight:800; cursor:pointer; 
-      transition: all 0.2s;
-      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+      transition: all 0.2s; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
     }
     .overlay button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5); background: #ffea00; }
 
-    /* --- ЭЛЕМЕНТЫ --- */
+    /* === ПАДАЮЩИЕ ЭЛЕМЕНТЫ (СТИЛИ ИЗ ТВОЕГО ПРИМЕРА) === */
     .item{
       position:absolute; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
-      min-width:100px; min-height:80px; padding:0; user-select:none; cursor:pointer;
-      z-index: 10; box-sizing: border-box; 
+      /* Мин размеры, но реальный размер задаст JS через fitGeometryBox */
+      min-width:120px; min-height:80px; 
+      padding:0; user-select:none; cursor:pointer; z-index: 10;
     }
     
     .item .bg{
-      position:absolute; inset:0; background: transparent; z-index: 0;
-      /* ИСПРАВЛЕНИЕ ОБРЕЗКИ И ГИГАНТСКОГО МАНГО */
-      background-position:center !important; 
-      background-size: contain !important; /* Вписываем картинку целиком */
-      background-repeat: no-repeat !important;
-      background-color: transparent !important; /* Убираем белые фоны */
-      border-radius: 12px; transition: filter .15s;
+      position:absolute; inset:0;
+      background: transparent; opacity:1;
+      border:0 solid #fff; box-shadow:none;
+      transition:filter .15s ease;
+      /* ГЛАВНОЕ: картинка всегда вписывается */
+      background-position:center !important;
+      background-repeat:no-repeat !important;
+      background-size: contain !important; 
     }
     
     .item .content{
-      position:relative; z-index: 2; 
+      position:relative; z-index:1;
       display:flex; align-items:center; justify-content:center;
-      text-align:center; padding: 12px;
+      text-align:center; line-height:1.15;
       width: var(--cw, auto); height: var(--ch, auto);
-      text-shadow: none !important; font-weight: 700; line-height: 1.2;
     }
     
+    .item .content span{ display:inline-block; font-weight:800; white-space:nowrap; }
     .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
-    
-    .shape-rect .bg { border-radius:6px }
+
+    /* Формы */
+    .shape-rect .bg { border-radius:10px }
     .shape-rounded .bg { border-radius:20px }
     .shape-circle .bg { border-radius:50% }
     .shape-diamond .bg { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) }
     .shape-star .bg { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-    
-    .fx-shadow .bg{ box-shadow:0 8px 20px rgba(0,0,0,0.3) }
-    .fx-glow .bg{ box-shadow:0 0 15px var(--glow) } 
-    .fx-3d .bg{ box-shadow:0 6px 0 rgba(0,0,0,0.2) }
 
+    /* Эффекты */
+    .fx-shadow .bg{ box-shadow:0 10px 30px rgba(0,0,0,.55) }
+    .fx-3d .bg{ box-shadow: 7px 7px 20px rgba(0,0,0,.55), inset -5px -5px 12px rgba(255,255,255,.22) }
+    .fx-glow .bg{ box-shadow:0 0 18px var(--glow, #00f0ff), 0 0 28px rgba(0,0,0,.25) }
+    
     .score-float{
       position:fixed; z-index:30; font-weight:900; font-size:24px;
-      text-shadow: 1px 1px 0 #000;
-      animation:floatUp .8s ease-out forwards; pointer-events:none;
+      text-shadow: 1px 1px 0 #000; animation:floatUp .8s ease-out forwards; pointer-events:none;
     }
     @keyframes floatUp{ 0%{ transform:translate(-50%,0); opacity:1 } 100%{ transform:translate(-50%,-60px); opacity:0 } }
     
     .caught{ transform: scale(1.1); opacity: 0; transition: all 0.2s; }
-    .tint-red .bg { background-color: rgba(255,0,0,0.7) !important; border-radius: 50%; } /* Красный тинт при ошибке */
-
+    .tint-red .bg { filter: hue-rotate(-25deg) saturate(3) brightness(1.2); }
     .firework { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 999; }
   </style>
 </head>
@@ -157,8 +123,7 @@
     <div class="badge timer" id="hudTimer">00</div>
     <div class="badge score" id="hudScore">0</div>
   </div>
-  <div id="game">
-    </div>
+  <div id="game"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
@@ -167,7 +132,6 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // --- СКОРОСТЬ (БАЛАНС 0.2 ... 3.5) ---
     function computeSpeedParams(S){
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
@@ -177,22 +141,9 @@
       return { vel, spawn, basePts: Math.round(basePts) };
     }
     
-    // --- ЛОКАЛИЗАЦИЯ И РАНГИ ---
     const I18N = {
-      ru: { 
-        ranks: ["Новичок", "Ученик", "Ниндзя", "Грандмастер", "БОГ РЕАКЦИИ"],
-        stats: { hits: "Поймано", wrong: "Ошибки", missed: "Пропущено", total: "СЧЁТ" }
-      },
-      en: { 
-        ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"],
-        stats: { hits: "Caught", wrong: "Mistakes", missed: "Missed", total: "SCORE" }
-      },
-      de: { ranks: ["Anfänger", "Lehrling", "Ninja", "Großmeister", "REAKTIONSGOTT"], stats: { hits: "Gefangen", wrong: "Fehler", missed: "Verpasst", total: "PUNKTE" } },
-      es: { ranks: ["Novato", "Aprendiz", "Ninja", "Gran Maestro", "DIOS DE LA REACCIÓN"], stats: { hits: "Atrapados", wrong: "Errores", missed: "Perdidos", total: "PUNTOS" } },
-      it: { ranks: ["Novizio", "Apprendista", "Ninja", "Gran Maestro", "DIO DELLA REAZIONE"], stats: { hits: "Presi", wrong: "Errori", missed: "Persi", total: "PUNTI" } },
-      fr: { ranks: ["Novice", "Apprenti", "Ninja", "Grand Maître", "DIEU DE LA RÉACTION"], stats: { hits: "Attrapés", wrong: "Erreurs", missed: "Ratés", total: "SCORE" } },
-      zh: { ranks: ["新手", "学徒", "忍者", "特级大师", "反应之神"], stats: { hits: "捕获", wrong: "错误", missed: "错过", total: "总分" } },
-      ja: { ranks: ["初心者", "見習い", "忍者", "グランドマスター", "反射神経の神"], stats: { hits: "捕獲", wrong: "ミス", missed: "逃した", total: "スコア" } },
+      ru: { ranks: ["Новичок", "Ученик", "Ниндзя", "Грандмастер", "БОГ РЕАКЦИИ"], stats: { hits: "Поймано", wrong: "Ошибки", missed: "Пропущено", total: "СЧЁТ" } },
+      en: { ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"], stats: { hits: "Caught", wrong: "Mistakes", missed: "Missed", total: "SCORE" } },
       math: { ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"], stats: { hits: "Solved", wrong: "Errors", missed: "Missed", total: "SCORE" } }
     };
 
@@ -208,13 +159,11 @@
     };
     
     let cfg = null;
-    let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; // neg/pos = left/right OR up/down
+    let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
     let SPEED = { vel: 1.5, spawn: 1000, basePts: 20 };
     let IS_HORIZONTAL = false;
-    
-    // ВАЖНО: Таймер спавна, чтобы убивать его при смене уровня
     let spawnTimer = null;
 
     const params = new URLSearchParams(location.search);
@@ -240,7 +189,8 @@
       }
       if(cfg.style?.glowColor) document.documentElement.style.setProperty('--glow', cfg.style.glowColor);
       
-      setupBackground();
+      // setupBackground удален, чтобы фон был всегда прозрачным
+      
       setupPlayer();
       
       const ov = document.createElement('div'); ov.className='overlay';
@@ -249,19 +199,6 @@
       ov.innerHTML = `<div class="panel"><h2>${tStart}</h2><button id="btnStart">${bStart}</button></div>`;
       document.body.appendChild(ov);
       $('#btnStart').onclick = () => { ov.remove(); startGame(); };
-    }
-
-    function setupBackground(){
-      const img = document.createElement('div');
-      img.style.cssText = "position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;transition:background-image 0.5s";
-      document.body.appendChild(img);
-      const list = cfg.style?.bgImages || [];
-      
-      if(list.length) img.style.backgroundImage = `url(${list[0]})`;
-      else if(cfg.style?.bgImage) img.style.backgroundImage = `url(${cfg.style.bgImage})`;
-      else img.style.backgroundColor = 'transparent'; // ИСПРАВЛЕНО: Прозрачный фон по умолчанию
-      
-      window.nextBg = () => { if(list.length) img.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`; };
     }
 
     function setupPlayer(){
@@ -274,88 +211,61 @@
       
       const dir = cfg.direction || 'down';
       
-      // ПОЗИЦИЯ ИГРОКА
       if(IS_HORIZONTAL) {
          playerPos.y = window.innerHeight / 2;
          if(dir === 'left') {
-            // Ловец слева, летит слева -> игрок слева
-            playerNode.style.left = '20px';
-            playerNode.style.top = '50%';
+            playerNode.style.left = '20px'; playerNode.style.top = '50%';
          } else {
-            // Ловец справа
-            playerNode.style.right = '20px';
-            playerNode.style.top = '50%';
+            playerNode.style.right = '20px'; playerNode.style.top = '50%';
          }
       } else {
-         // Вертикально
          playerPos.x = window.innerWidth / 2;
          if(dir === 'down') {
-            playerNode.style.bottom = '0px';
-            playerNode.style.left = '50%';
+            playerNode.style.bottom = '0px'; playerNode.style.left = '50%';
          } else {
-            playerNode.style.top = '0px'; // для режима снизу-вверх (пузыри)
-            playerNode.style.left = '50%';
+            playerNode.style.top = '0px'; playerNode.style.left = '50%';
          }
       }
-      
       $('#game').appendChild(playerNode);
       setupControls();
       requestAnimationFrame(loopPlayer);
     }
 
     function setupControls(){
-      // Клавиатура
       window.onkeydown = e => { 
          if(IS_HORIZONTAL) {
-            if(e.key==='ArrowUp') keys.neg=true; 
-            if(e.key==='ArrowDown') keys.pos=true;
+            if(e.key==='ArrowUp') keys.neg=true; if(e.key==='ArrowDown') keys.pos=true;
          } else {
-            if(e.key==='ArrowLeft') keys.neg=true; 
-            if(e.key==='ArrowRight') keys.pos=true;
+            if(e.key==='ArrowLeft') keys.neg=true; if(e.key==='ArrowRight') keys.pos=true;
          }
       };
       window.onkeyup = e => {
          if(IS_HORIZONTAL) {
-            if(e.key==='ArrowUp') keys.neg=false; 
-            if(e.key==='ArrowDown') keys.pos=false;
+            if(e.key==='ArrowUp') keys.neg=false; if(e.key==='ArrowDown') keys.pos=false;
          } else {
-            if(e.key==='ArrowLeft') keys.neg=false; 
-            if(e.key==='ArrowRight') keys.pos=false;
+            if(e.key==='ArrowLeft') keys.neg=false; if(e.key==='ArrowRight') keys.pos=false;
          }
       };
-
-      // Тач зоны
       const gameDiv = $('#game');
       const z1 = document.createElement('div'); z1.className='touch-zone';
       const z2 = document.createElement('div'); z2.className='touch-zone';
-      
       if(IS_HORIZONTAL) {
-         // Верхняя половина = ВВЕРХ (neg), Нижняя = ВНИЗ (pos)
-         z1.style.cssText = "top:0; left:0; right:0; height:50%";
-         z2.style.cssText = "bottom:0; left:0; right:0; height:50%";
+         z1.style.cssText = "top:0; left:0; right:0; height:50%"; z2.style.cssText = "bottom:0; left:0; right:0; height:50%";
       } else {
-         // Левая = ВЛЕВО (neg), Правая = ВПРАВО (pos)
-         z1.style.cssText = "top:0; left:0; bottom:0; width:50%";
-         z2.style.cssText = "top:0; right:0; bottom:0; width:50%";
+         z1.style.cssText = "top:0; left:0; bottom:0; width:50%"; z2.style.cssText = "top:0; right:0; bottom:0; width:50%";
       }
-      
       const bind = (el, k) => {
         el.ontouchstart = e => { e.preventDefault(); keys[k]=true; };
         el.ontouchend = e => { e.preventDefault(); keys[k]=false; };
-        el.onmousedown = () => keys[k]=true;
-        el.onmouseup = () => keys[k]=false;
-        el.onmouseleave = () => keys[k]=false;
+        el.onmousedown = () => keys[k]=true; el.onmouseup = () => keys[k]=false; el.onmouseleave = () => keys[k]=false;
       };
       bind(z1, 'neg'); bind(z2, 'pos');
-      
       gameDiv.appendChild(z1); gameDiv.appendChild(z2);
     }
 
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
-      
-      if(keys.neg) playerPos.v -= 1.5;
-      if(keys.pos) playerPos.v += 1.5;
+      if(keys.neg) playerPos.v -= 1.5; if(keys.pos) playerPos.v += 1.5;
       playerPos.v *= 0.85;
 
       if(IS_HORIZONTAL) {
@@ -363,17 +273,14 @@
          const h = playerNode.offsetHeight;
          if(playerPos.y < h/2) { playerPos.y = h/2; playerPos.v=0; }
          if(playerPos.y > window.innerHeight - h/2) { playerPos.y = window.innerHeight - h/2; playerPos.v=0; }
-         playerNode.style.top = playerPos.y + 'px';
-         playerNode.style.transform = 'translateY(-50%)'; // Центрирование
+         playerNode.style.top = playerPos.y + 'px'; playerNode.style.transform = 'translateY(-50%)'; 
       } else {
          playerPos.x += playerPos.v;
          const w = playerNode.offsetWidth;
          if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
          if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
-         playerNode.style.left = playerPos.x + 'px';
-         playerNode.style.transform = 'translateX(-50%)'; // Центрирование
+         playerNode.style.left = playerPos.x + 'px'; playerNode.style.transform = 'translateX(-50%)'; 
       }
-      
       checkCollisions();
       requestAnimationFrame(loopPlayer);
     }
@@ -385,13 +292,11 @@
     }
 
     function startLevel(){
-      // 1. ОЧИСТКА ПРЕДЫДУЩЕГО УРОВНЯ
-      if(spawnTimer) clearTimeout(spawnTimer); // Убиваем спавнер старого уровня
-      document.querySelectorAll('.item').forEach(e=>e.remove()); // Убираем старые предметы
+      if(spawnTimer) clearTimeout(spawnTimer); 
+      document.querySelectorAll('.item').forEach(e=>e.remove()); 
       
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
-      window.nextBg();
       const lv = cfg.levels[currentLevel-1];
       $('#hudLevel').textContent = lv.target || `${currentLevel}`;
       
@@ -403,8 +308,7 @@
         time--;
         $('#hudTimer').textContent = time;
         if(time <= 0) {
-          clearInterval(timer);
-          clearTimeout(spawnTimer); // Останавливаем спавн
+          clearInterval(timer); clearTimeout(spawnTimer); 
           document.querySelectorAll('.item').forEach(e=>e.remove());
           showLevelComplete();
         }
@@ -417,60 +321,144 @@
       const next = () => {
          if(!running) return;
          if(document.querySelectorAll('.item').length < 6) drop(pool[Math.floor(Math.random()*pool.length)]);
-         // Сохраняем ID таймера, чтобы убить его при смене уровня
          spawnTimer = setTimeout(next, SPEED.spawn);
       };
       next();
     }
 
+    // === НОВАЯ ФУНКЦИЯ DROP (КАК В FALLING ITEMS) ===
     function drop(data){
+      const STYLE = cfg.style || {};
+      const FONT = cfg.font || 'sans-serif';
+      const FONT_SIZE = Number(cfg.fontSize || 24);
+      const TEXT_COLOR = cfg.textColor || '#ffffff';
+      
+      // 1. Создаем контейнер
       const el = document.createElement('div');
-      const sty = cfg.style;
-      el.className = `item shape-${sty.shape} ${sty.shadow?'fx-shadow':''} ${sty.fx3d?'fx-3d':''} ${sty.glow?'fx-glow':''}`;
-      el.dataset.good = data.g; // Вот здесь данные привязываются к элементу
-
-      const bg = document.createElement('div'); bg.className = 'bg';
-      if(sty.bgImages?.length) bg.style.backgroundImage = `url(${sty.bgImages[0]})`;
-      else if(sty.bgColor) bg.style.backgroundColor = sty.bgColor;
-      else bg.style.backgroundColor = 'transparent'; 
-      bg.style.opacity = sty.opacity || 1;
-      if(sty.borderOn) bg.style.border = `2px solid ${sty.borderColor}`;
-
-      const con = document.createElement('div'); con.className = 'content';
-      if(data.v.startsWith('http')){
-        con.innerHTML = `<img src="${data.v}">`;
-        con.style.setProperty('--cw', sty.imgBox+'px'); con.style.setProperty('--ch', sty.imgBox+'px');
-      } else {
-        con.textContent = data.v;
-        con.style.fontSize = (cfg.fontSize||24)+'px';
-        con.style.fontFamily = cfg.font;
-        con.style.color = cfg.textColor;
-        if(cfg.language==='math') { con.textContent = `\\(${data.v}\\)`; MathJax.typesetPromise([con]); }
+      el.className = `item shape-${STYLE.shape || 'rounded'} ${STYLE.shadow?'fx-shadow':''} ${STYLE.fx3d?'fx-3d':''} ${STYLE.glow?'fx-glow':''}`;
+      el.dataset.good = data.g;
+      
+      // 2. Фон (фрукт)
+      const bg = document.createElement('div');
+      bg.className = 'bg';
+      
+      // Выбираем картинку или цвет
+      if(STYLE.bgImages && STYLE.bgImages.length) {
+         const pick = STYLE.bgImages[Math.floor(Math.random()*STYLE.bgImages.length)];
+         bg.style.backgroundImage = `url(${pick})`;
+      } else if(STYLE.bgImage) {
+         // Поддержка строки с разделителями, как в Falling Items
+         const list = String(STYLE.bgImage).split(/[\n\r,|;]+/).map(s=>s.trim()).filter(Boolean);
+         if(list.length) bg.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`;
+      } else if(STYLE.bgColor) {
+         bg.style.backgroundColor = STYLE.bgColor;
       }
+      
+      bg.style.opacity = STYLE.opacity || 1;
+      if(STYLE.borderOn) bg.style.border = `2px solid ${STYLE.borderColor}`;
+
+      // 3. Контент (текст или картинка внутри)
+      const con = document.createElement('div');
+      con.className = 'content';
+      
+      // ПАДДИНГИ ИЗ КОНФИГА
+      const PAD = Number(STYLE.pad || 22);
+      con.style.padding = PAD + 'px';
+      
+      const IMG_BOX = Number(STYLE.imgBox || 160);
+
+      if(/^https?:\/\//i.test(data.v)){
+         // Если это картинка внутри
+         const img = document.createElement('img');
+         img.src = data.v;
+         con.appendChild(img);
+         con.style.setProperty('--cw', IMG_BOX + 'px');
+         con.style.setProperty('--ch', IMG_BOX + 'px');
+      } else {
+         // Если это текст
+         const span = document.createElement('span');
+         if(cfg.language==='math') { 
+             span.textContent = `\\(${data.v}\\)`; 
+         } else {
+             span.textContent = data.v;
+         }
+         span.style.color = TEXT_COLOR;
+         span.style.fontSize = `${FONT_SIZE}px`;
+         span.style.fontFamily = FONT;
+         con.appendChild(span);
+      }
+      
       el.appendChild(bg); el.appendChild(con);
       
-      const dir = cfg.direction || 'down';
-      
-      // СТАРТОВАЯ ПОЗИЦИЯ
-      if(IS_HORIZONTAL) {
-         // По Y рандомно
-         el.style.top = rnd(60, window.innerHeight-60) + 'px';
-         if(dir === 'left') el.style.left = (window.innerWidth + 100) + 'px'; // Летит налево
-         else el.style.left = '-150px'; // Летит направо
-      } else {
-         // По X рандомно
-         el.style.left = rnd(60, window.innerWidth-60) + 'px';
-         if(dir === 'down') el.style.top = '-150px';
-         else el.style.top = (window.innerHeight + 50) + 'px';
-      }
-      
-      if(!playerNode) el.onclick = () => catchItem(el);
+      // Добавляем в игру, чтобы измерить
       $('#game').appendChild(el);
       
-      let t = Math.random() * 100;
-      const speed = SPEED.vel;
+      // MathJax рендер, если нужен
+      if(cfg.language==='math') {
+          MathJax.typesetPromise([el]).then(() => {
+             fitGeometryBox(el, STYLE);
+             setStartPosition(el);
+          });
+      } else {
+         // 4. ГЛАВНОЕ: РАСТЯГИВАЕМ ФРУКТ ПОД ТЕКСТ
+         fitGeometryBox(el, STYLE);
+         setStartPosition(el);
+      }
       
-      function fall(){
+      // 5. Запуск падения
+      startFalling(el);
+      
+      if(!playerNode) el.onclick = () => catchItem(el);
+    }
+    
+    // === ФУНКЦИЯ ПОДГОНА РАЗМЕРА КОНТЕЙНЕРА ПОД СОДЕРЖИМОЕ ===
+    function fitGeometryBox(el, STYLE){
+       const content = el.querySelector('.content');
+       if(!content) return;
+       
+       // Сбрасываем размеры
+       el.style.width = ''; el.style.height='';
+       
+       const r = content.getBoundingClientRect();
+       
+       // Определяем паддинги рамки (если есть картинка, нужно больше места)
+       const hasImg = (STYLE.bgImages && STYLE.bgImages.length) || (STYLE.bgImage && STYLE.bgImage.length);
+       const padX = hasImg ? 30 : 22;
+       const padY = hasImg ? 24 : 18;
+       
+       let W = Math.ceil(r.width + padX); // + паддинги
+       let H = Math.ceil(r.height + padY);
+
+       const shape = STYLE.shape || 'rounded';
+       // Если форма круглая/квадратная - делаем равносторонним по большей стороне
+       if (shape === 'circle' || shape === 'diamond' || shape === 'star'){
+           const S = Math.max(W, H);
+           W = H = Math.ceil(S + 10);
+       }
+       
+       el.style.width = W + 'px';
+       el.style.height = H + 'px';
+    }
+
+    function setStartPosition(el) {
+      const dir = cfg.direction || 'down';
+      if(IS_HORIZONTAL) {
+         el.style.top = rnd(60, window.innerHeight-60) + 'px';
+         if(dir === 'left') el.style.left = (window.innerWidth + 100) + 'px'; 
+         else el.style.left = '-250px'; 
+      } else {
+         el.style.left = rnd(60, window.innerWidth-60) + 'px';
+         if(dir === 'down') el.style.top = '-250px';
+         else el.style.top = (window.innerHeight + 50) + 'px';
+      }
+    }
+
+    function startFalling(el) {
+       let t = Math.random() * 100;
+       const speed = SPEED.vel;
+       const dir = cfg.direction || 'down';
+       
+       function fall(){
         if(!el.parentNode) return;
         t += 0.05;
         const sway = Math.sin(t) * 25; 
@@ -480,27 +468,24 @@
            if(dir === 'left') x -= speed; else x += speed;
            el.style.left = x + 'px';
            el.style.transform = `translateY(${sway}px)`;
-           
-           // Удаление
-           if(x < -200 || x > window.innerWidth+200) {
+           if(x < -300 || x > window.innerWidth+300) {
               if(el.dataset.good === 'true') missed++;
               el.remove();
            } else requestAnimationFrame(fall);
-           
         } else {
            let y = parseFloat(el.style.top);
            if(dir === 'down') y += speed; else y -= speed;
            
-           // Границы покачивания
            let curX = parseFloat(el.style.left);
            const elW = el.offsetWidth || 100;
+           // Ограничение по краям при покачивании
            if(curX + sway < 10) el.style.left = (curX + (10 - (curX+sway))) + 'px';
            else if (curX + sway > window.innerWidth - elW - 10) el.style.left = (curX - ((curX+sway) - (window.innerWidth - elW - 10))) + 'px';
            
            el.style.top = y + 'px';
            el.style.transform = `translateX(${sway}px)`;
            
-           if(y > window.innerHeight+100 || y < -200) {
+           if(y > window.innerHeight+300 || y < -300) {
               if(el.dataset.good === 'true') missed++;
               el.remove();
            } else requestAnimationFrame(fall);
@@ -511,14 +496,10 @@
 
     function checkCollisions(){
       const pRect = playerNode.getBoundingClientRect();
-      // Хитбокс чуть меньше визуала
       const hit = { 
-         l: pRect.left + pRect.width*0.2, 
-         r: pRect.right - pRect.width*0.2, 
-         t: pRect.top + pRect.height*0.2, 
-         b: pRect.bottom - pRect.height*0.2 
+         l: pRect.left + pRect.width*0.2, r: pRect.right - pRect.width*0.2, 
+         t: pRect.top + pRect.height*0.2, b: pRect.bottom - pRect.height*0.2 
       };
-
       document.querySelectorAll('.item').forEach(el => {
         if(el.dataset.caught) return;
         const r = el.getBoundingClientRect();
@@ -571,20 +552,12 @@
     function gameOver(){
       const ov = document.createElement('div'); ov.className='overlay';
       try{ SND.win.currentTime=0; SND.win.play() }catch(e){}
-      
       const ranks = t(LANG, 'ranks');
-      let rankIdx = 0;
-      if (score >= 50) rankIdx = 1;
-      if (score >= 150) rankIdx = 2;
-      if (score >= 300) rankIdx = 3;
-      if (score >= 500) rankIdx = 4;
+      let rankIdx = 0; if (score >= 50) rankIdx = 1; if (score >= 150) rankIdx = 2; if (score >= 300) rankIdx = 3; if (score >= 500) rankIdx = 4;
       const rankName = ranks[rankIdx];
-
       const TXT = t(LANG, 'stats');
       const fbVal = cfg.finalFeedback || 'Good Job!';
-      let fbContent = '';
-      if(/^https?:\/\//i.test(fbVal)) fbContent = `<img src="${fbVal}" class="feedback-img">`;
-      else fbContent = `<h2>${fbVal}</h2>`;
+      let fbContent = /^https?:\/\//i.test(fbVal) ? `<img src="${fbVal}" class="feedback-img">` : `<h2>${fbVal}</h2>`;
 
       ov.innerHTML = `
         <div class="panel">
@@ -611,30 +584,20 @@
           }, i * 300);
        }
     }
-
     function createFirework(x, y) {
       const colors = ['#ff0', '#f0f', '#0ff', '#0f0', '#f00'];
       const color = colors[Math.floor(Math.random() * colors.length)];
       for (let i = 0; i < 20; i++) {
-        const p = document.createElement('div');
-        p.className = 'firework';
-        p.style.backgroundColor = color;
-        p.style.left = x + 'px';
-        p.style.top = y + 'px';
-        const angle = (Math.PI * 2 * i) / 20;
-        const speed = Math.random() * 5 + 2;
-        const vx = Math.cos(angle) * speed;
-        const vy = Math.sin(angle) * speed;
+        const p = document.createElement('div'); p.className = 'firework';
+        p.style.backgroundColor = color; p.style.left = x + 'px'; p.style.top = y + 'px';
+        const angle = (Math.PI * 2 * i) / 20; const speed = Math.random() * 5 + 2;
+        const vx = Math.cos(angle) * speed; const vy = Math.sin(angle) * speed;
         document.body.appendChild(p);
         let life = 100;
         const anim = setInterval(() => {
-           const l = parseFloat(p.style.left);
-           const t = parseFloat(p.style.top);
-           p.style.left = (l + vx) + 'px';
-           p.style.top = (t + vy) + 'px';
-           p.style.opacity = life / 100;
-           life -= 2;
-           if(life <= 0) { clearInterval(anim); p.remove(); }
+           const l = parseFloat(p.style.left); const t = parseFloat(p.style.top);
+           p.style.left = (l + vx) + 'px'; p.style.top = (t + vy) + 'px'; p.style.opacity = life / 100;
+           life -= 2; if(life <= 0) { clearInterval(anim); p.remove(); }
         }, 20);
       }
     }
