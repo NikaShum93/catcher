@@ -3,523 +3,676 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Редактор — Листопад (КГБ)</title>
+  <title>🦄 Magic Editor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <link id="gf" rel="stylesheet" href="">
 
   <style>
-    :root{
-      --ui-acc:#ffd700;
-      --card:#151515;
-      --ink:#eee;
-      --muted:#b7b7b7;
-      --stroke:#2a2a2a;
-      --gap:16px;
+    :root {
+      /* Палитра Единорога */
+      --glass: rgba(255, 255, 255, 0.1);
+      --glass-strong: rgba(255, 255, 255, 0.2);
+      --border: rgba(255, 255, 255, 0.3);
+      --neon-pink: #ff00ff;
+      --neon-cyan: #00ffff;
+      --text: #ffffff;
+      --text-soft: rgba(255,255,255,0.7);
+      --radius: 24px;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; background:#0d0d0d; color:var(--ink);
-      font-family:Rubik,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      display:flex; flex-direction:column;
-    }
-    header{
-      display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--stroke);
-      position:sticky; top:0; background:#0d0d0d; z-index:2;
-    }
-    header img{height:42px}
-    header h1{font-size:20px; margin:0; color:var(--ui-acc); font-weight:800}
-    main{display:grid; grid-template-columns: 430px 1fr; gap:22px; padding:20px; max-width:1500px; width:100%; margin:0 auto}
-    .card{
-      background:var(--card); border:1px solid var(--stroke); border-radius:14px; padding:18px;
-      box-shadow:0 0 28px rgba(255,215,0,.06);
-    }
-    .card h2{margin:0 0 14px; font-size:18px; color:var(--ui-acc)}
-    label{display:block; margin:12px 0 8px; font-size:15px; color:#fff; font-weight:600}
-    input[type="text"], input[type="number"], input[type="url"], textarea, select{
-      width:100%; background:#101010; color:#fff; border:1px solid #3a3a3a; border-radius:10px; padding:12px 14px; font-size:16px;
-      outline:none; transition:border-color .15s ease, box-shadow .15s ease;
-    }
-    textarea{min-height:110px; resize:vertical}
-    input:focus, textarea:focus, select:focus{border-color:#4b4b4b; box-shadow:0 0 0 3px rgba(255,215,0,.16)}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:var(--gap)}
-    .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--gap)}
-    .inline{display:flex; gap:12px; align-items:center}
-    .hint{color:var(--muted); font-size:13px; margin-top:8px}
-    .pill{display:inline-block; padding:8px 12px; border:1px dashed #444; border-radius:999px; color:#bbb; font-size:13px}
 
-    button{
-      background:linear-gradient(90deg,#ffbf00,#ffd700); color:#000; border:none; border-radius:12px; font-weight:800;
-      padding:14px 18px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; font-size:16px;
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      /* Трансцендентный градиент */
+      background: linear-gradient(135deg, #2e0249, #570a57, #a91079, #f806cc, #2e0249);
+      background-size: 400% 400%;
+      animation: dreamFlow 20s ease infinite;
+      
+      font-family: 'Quicksand', sans-serif;
+      color: var(--text);
+      height: 100vh;
+      display: flex; flex-direction: column; overflow: hidden;
     }
-    button:hover{transform:translateY(-1px); box-shadow:0 8px 26px rgba(255,215,0,.28)}
-    .btn-ghost{background:transparent; color:#fff; border:1px solid #444}
-    .btn-danger{background:#a80000; color:#fff}
-    .stack{display:flex; flex-direction:column; gap:var(--gap)}
-    .levels .level{background:#111; border:1px solid #2a2a2a; border-radius:12px; padding:16px}
-    .level h3{margin:0 0 10px; font-size:16px; color:#fff; display:flex; align-items:center; justify-content:space-between}
-    .toolbar{display:flex; gap:12px; flex-wrap:wrap}
-    .right{display:flex; gap:10px; align-items:center; justify-content:flex-end}
-
-    footer{padding:14px 20px; color:#888; border-top:1px solid var(--stroke); display:flex; align-items:center; justify-content:center; gap:8px}
-    footer a{color:var(--ui-acc); text-decoration:none}
-
-    /* ПРЕДПРОСМОТР */
-    .preview-wrap{display:grid; grid-template-rows:auto 1fr; gap:12px; height:100%}
-    .preview-stage{background:#0a0a0a; border:1px dashed #333; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:24px; min-height:320px}
-    .preview-controls{display:grid; grid-template-columns:1fr auto; gap:12px}
-    .preview-item{
-      position:relative; display:inline-flex; align-items:center; justify-content:center;
-      padding:18px 22px; min-width:160px; min-height:70px; transition:all .2s ease;
-      background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important;
+    
+    @keyframes dreamFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
-    /* Размер превью через переменные (для картинок) */
-    .preview-item{ width: var(--cw, auto); height: var(--ch, auto); }
-    .preview-item img{ width:100%; height:100%; object-fit:contain; }
 
-    /* ФИГУРЫ */
-    .shape-rect{border-radius:10px}
-    .shape-rounded{border-radius:20px}
-    .shape-circle{border-radius:9999px}
-    .shape-diamond{clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);}
-    .shape-star{clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)}
+    /* ПУЗЫРИКИ НА ФОНЕ */
+    .bubbles {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .bubble {
+      position: absolute; bottom: -100px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,255,255,0.1));
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      border-radius: 50%;
+      animation: floatUp linear infinite;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(1); opacity: 0; }
+      10% { opacity: 0.7; }
+      90% { opacity: 0.7; }
+      100% { transform: translateY(-120vh) scale(1.5); opacity: 0; }
+    }
 
-    /* ЭФФЕКТЫ */
-    .fx-shadow{box-shadow:0 10px 30px rgba(0,0,0,.5)}
-    .fx-glow{box-shadow:0 0 18px var(--glow, #00f0ff)}
-    .fx-3d{box-shadow:7px 7px 20px rgba(0,0,0,.5), inset -5px -5px 12px rgba(255,255,255,.22)}
-    .fx-border{border-style:solid}
+    /* === HEADER === */
+    header {
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 15px 30px;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 10;
+      box-shadow: 0 5px 30px rgba(0,0,0,0.2);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { 
+      font-weight: 800; font-size: 22px; margin:0; 
+      background: linear-gradient(to right, #fff, var(--neon-cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px var(--neon-pink);
+    }
 
-    /* РЕЗУЛЬТАТ */
-    .result{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start}
-    .result textarea{height:120px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    /* === LAYOUT === */
+    main {
+      flex: 1; display: grid; grid-template-columns: 480px 1fr; gap: 0; 
+      overflow: hidden; z-index: 1; /* Поверх пузырей */
+    }
+    
+    .scroll-col { 
+      overflow-y: auto; padding: 30px; padding-bottom: 150px; 
+      border-right: 1px solid var(--border);
+      background: rgba(0,0,0,0.1);
+    }
+    .sticky-col { 
+      overflow-y: auto; padding: 30px; 
+      background: rgba(255,255,255,0.02); 
+    }
+
+    /* Скроллбар */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+    ::-webkit-scrollbar-thumb { 
+      background: linear-gradient(to bottom, var(--neon-pink), var(--neon-cyan)); 
+      border-radius: 10px; 
+    }
+
+    /* === GLASS CARDS === */
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover { 
+      transform: translateY(-5px); 
+      box-shadow: 0 15px 50px rgba(0,255,255,0.15); 
+      border-color: var(--neon-cyan);
+    }
+    .card h2 { 
+      margin: 0 0 20px; font-size: 16px; color: var(--neon-cyan); 
+      font-weight: 700; text-transform: uppercase; letter-spacing: 2px; 
+      display: flex; align-items: center; gap: 10px;
+      text-shadow: 0 0 10px rgba(0,255,255,0.5);
+    }
+
+    /* === INPUTS === */
+    label { display: block; font-size: 13px; font-weight: 700; color: var(--text-soft); margin-bottom: 8px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    
+    input, select, textarea {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 15px; font-family: 'Nunito', sans-serif; font-weight: 600;
+      color: #fff; transition: all 0.3s;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; 
+      border-color: var(--neon-pink); 
+      box-shadow: 0 0 15px rgba(255,0,255,0.4);
+      background: rgba(0,0,0,0.5);
+    }
+    input[type="color"] { padding: 4px; height: 45px; cursor: pointer; }
+    textarea { resize: vertical; min-height: 90px; }
+    
+    .check-row { 
+      display: flex; align-items: center; gap: 12px; 
+      background: rgba(255,255,255,0.05); padding: 10px 14px; 
+      border-radius: 12px; border: 1px solid var(--border); 
+      cursor: pointer; transition: 0.3s;
+    }
+    .check-row:hover { background: rgba(255,255,255,0.15); border-color: var(--neon-pink); }
+    .check-row input { width: auto; margin: 0; box-shadow:none; }
+    .check-row label { margin: 0; cursor: pointer; color: #fff; }
+
+    /* === BUTTONS === */
+    button {
+      background: linear-gradient(90deg, #ff00cc, #3333ff);
+      color: #fff; border: none; padding: 14px 24px; border-radius: 16px;
+      font-weight: 800; cursor: pointer; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;
+      box-shadow: 0 0 20px rgba(255, 0, 204, 0.4);
+      transition: all 0.3s; width: 100%; position: relative; overflow: hidden;
+    }
+    button::after {
+      content:''; position: absolute; top:0; left:-100%; width:100%; height:100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: 0.5s;
+    }
+    button:hover::after { left: 100%; }
+    button:hover { transform: scale(1.02); box-shadow: 0 0 30px rgba(51, 51, 255, 0.6); }
+    
+    .btn-ghost { 
+      background: rgba(255,255,255,0.1); color: #fff; 
+      box-shadow: none; border: 1px solid var(--border); 
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.2); border-color: #fff; }
+    .btn-danger { background: rgba(255, 50, 50, 0.3); border: 1px solid #ff3333; color: #ffadad; width: auto; padding: 6px 14px; font-size: 12px; }
+
+    /* === PREVIEW === */
+    .preview-sticky-wrap { 
+      position: sticky; top: 0; z-index: 5; 
+      border: 2px solid var(--neon-cyan); 
+      background: rgba(0,0,0,0.6);
+      box-shadow: 0 0 30px rgba(0,255,255,0.2);
+    }
+    .preview-stage {
+      /* Шахматка для прозрачности */
+      background-color: #1a1a2e;
+      background-image: radial-gradient(#ffffff 1px, transparent 1px);
+      background-size: 20px 20px;
+      border-radius: 16px; height: 240px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden; margin-top: 15px; 
+      border: 1px dashed rgba(255,255,255,0.3);
+    }
+    
+    /* PREVIEW ITEM */
+    .preview-item {
+      position: relative; display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .preview-item .bg-layer {
+      position: absolute; inset: 0; z-index: 0;
+      background-size: cover !important; background-position: center !important;
+      transition: opacity 0.2s;
+    }
+    .preview-item .content-layer {
+      position: relative; z-index: 1; padding: 12px; 
+      display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+    }
+    
+    .shape-rect .bg-layer { border-radius: 12px; }
+    .shape-rounded .bg-layer { border-radius: 30px; }
+    .shape-circle .bg-layer { border-radius: 50%; }
+    .shape-diamond .bg-layer { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+    .shape-star .bg-layer { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+
+    .fx-shadow .bg-layer { box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    .fx-glow .bg-layer { box-shadow: 0 0 20px var(--glow), inset 0 0 10px var(--glow); }
+
+    /* === LEVELS === */
+    .level {
+      background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; margin-bottom: 15px;
+      border-left: 5px solid var(--neon-pink);
+    }
+    .level-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
+    .level h3 { margin: 0; font-size: 16px; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+    
+    /* === PUBLISH === */
+    #iframeOut { font-family: monospace; font-size: 12px; background: #000; color: #00ff00; border: 1px solid #333; }
+    .hint { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 5px; }
+
   </style>
-
-  <link id="gf" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap">
 </head>
 <body>
+
+  <div class="bubbles" id="bubbles"></div>
+
   <header>
-    <a href="https://kgbgamecorp.ru" target="_blank" rel="noopener">
-      <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" alt="КГБ">
-    </a>
-    <h1>Редактор — Catcher</h1>
+    <div class="brand">
+      <span style="font-size:28px">🦄</span>
+      <h1>Magic Catcher</h1>
+    </div>
+    <button id="saveBtnTop" style="width: auto; padding: 10px 25px;">✨ Опубликовать</button>
   </header>
 
   <main>
-<section class="card stack">
-  <h2>⚙️ Общие настройки</h2>
-<div class="row">
-  <div>
-    <label>Язык / режим</label>
-    <select id="language"></select>
-  </div>
-  <div>
-    <label>Шрифт</label>
-    <select id="font"></select>
-  </div>
-</div>
-  <div class="row">
-    <div>
-      <label>Скорость (1–10)</label>
-      <input type="number" id="speed" value="5" min="1" max="10">
-    </div>
-  </div>
-  <div class="row">
-    <div>
-      <label>Направление движения</label>
-      <select id="direction">
-        <option value="down">Сверху вниз (Классика)</option>
-        <option value="up">Снизу вверх (Пузыри)</option>
-        <option value="left">Справа НАЛЕВО (Ловец слева)</option>
-        <option value="right">Слева НАПРАВО (Ловец справа)</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="row">
-    <div>
-      <label>Размер шрифта (px)</label>
-      <input type="number" id="fontSize" value="24" min="10" max="100">
-    </div>
-    <div>
-      <label>Цвет шрифта</label>
-      <input type="color" id="textColor" value="#ffffff">
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>🚀 Запуск</h2>
-    <label>Текст при запуске</label>
-    <input type="text" id="startTitle" placeholder="Игра «Листопад»" />
-    <label>Текст кнопки</label>
-    <input type="text" id="startBtnText" placeholder="Начать" />
-  </div>
-
-  <div class="card">
-    <h2>🏁 Финал</h2>
-    <label>Фидбек (Текст или URL картинки)</label>
-    <textarea id="finalFeedback" placeholder="Отличная работа!"></textarea>
-  </div>
-
-<div>
-  <label>Фигура</label>
-  <select id="shape">
-    <option value="rect">Прямоугольник</option>
-    <option value="rounded" selected>Скруглённый</option>
-    <option value="circle">Круг</option>
-    <option value="diamond">Ромб</option>
-    <option value="star">Звезда</option>
-  </select>
-</div>
-  <div>
-    <label>Фон — цвет</label>
-    <input type="color" id="bgColor" value="#1a1a1a">
-  </div>
-<label>Фоны-держатели (URL, с каждой строки)</label>
-<textarea id="bgImages" placeholder="https://.../holder1.png"></textarea>
-
-  <div class="row-3" style="margin-top:6px">
-    <div>
-      <label>Рамка (цвет)</label>
-      <input type="color" id="borderColor" value="#ffffff">
-    </div>
-    <div>
-      <label>Толщина (px)</label>
-      <input type="number" id="borderWidth" value="1" min="0">
-    </div>
-    <div class="inline" style="align-items:end;">
-      <label style="width:100%">Включена?</label>
-      <input type="checkbox" id="borderOn" checked>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="inline">
-      <input type="checkbox" id="shadowOn" checked><label for="shadowOn">Тень</label>
-    </div>
-    <div class="inline">
-      <input type="checkbox" id="glowOn"><label for="glowOn">Подсветка</label>
-      <input type="color" id="glowColor" value="#00f0ff">
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="inline">
-      <input type="checkbox" id="fx3d"><label for="fx3d">3D эффект</label>
-    </div>
-    <div>
-      <label>Прозрачность фона (0–1)</label>
-      <input type="text" id="opacity" value="1">
-    </div>
-  </div>
-
-  <div class="row">
-    <div>
-      <label>Внутренний отступ (px)</label>
-            <input type="number" id="pad" value="22" min="0" max="120">
-    </div>
-  </div>
-<div>
-  <label>Размер картинки (px)</label>
-  <input type="range" id="imgBox" min="80" max="260" value="160" step="10">
-</div>
-  
-  <div class="card" style="border-style:dashed">
-    <h2>🧪 Предпросмотр</h2>
-    <div class="preview-controls">
-      <input type="text" id="previewValue" placeholder="Текст или URL..." value="Preview">
-      <div class="right">
-        <button class="btn-ghost" id="btnText">Текст</button>
-        <button class="btn-ghost" id="btnImage">Картинка</button>
-      </div>
-    </div>
-    <div class="preview-stage">
-      <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#00f0ff;">
-        <span id="previewText" style="font-weight:800; font-size:24px">Preview</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-    <section class="card stack">
-      <h2>🎯 Уровни</h2>
-      <div class="levels" id="levels"></div>
-      <div class="toolbar">
-        <button id="addLevel">➕ Добавить уровень</button>
-        <span class="pill">Неограниченно уровней</span>
+    <div class="scroll-col">
+      
+      <div class="card">
+        <h2><span>🎮</span> Геймплей</h2>
+        <div class="row">
+          <div>
+            <label>Язык</label>
+            <select id="language"></select>
+          </div>
+          <div>
+            <label>Шрифт</label>
+            <select id="font"></select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Скорость (1–10)</label>
+            <input type="number" id="speed" value="5" min="1" max="10">
+          </div>
+          <div>
+            <label>Направление</label>
+            <select id="direction">
+              <option value="down">⬇️ Сверху ВНИЗ</option>
+              <option value="up">⬆️ Снизу ВВЕРХ</option>
+              <option value="left">⬅️ Справа НАЛЕВО</option>
+              <option value="right">➡️ Слева НАПРАВО</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <h2 style="margin-top:8px">🚀 Публикация</h2>
-      <div class="row">
-        <button id="saveBtn">💾 Сохранить</button>
-        <button id="testBtn" class="btn-ghost">🔍 Проверка JSON</button>
+      <div class="card" style="border-color: var(--neon-pink);">
+        <h2><span>🦸‍♂️</span> Герой</h2>
+        <label>Картинка героя (URL)</label>
+        <input type="url" id="playerImg" placeholder="https://.../unicorn.gif">
+        <div class="hint">Если пусто — играем кликами (без героя).</div>
+        
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label>Ширина (px)</label>
+            <input type="number" id="playerWidth" value="120">
+          </div>
+          <div>
+            <label>Высота (px)</label>
+            <input type="number" id="playerHeight" value="120">
+          </div>
+        </div>
       </div>
 
-      <div class="result" style="margin-top:10px">
-        <textarea id="iframeOut" readonly placeholder="Здесь появится iframe"></textarea>
-        <button id="copyBtn" class="btn-ghost">📋 Копировать</button>
+      <div class="card">
+        <h2><span>🎨</span> Вид элементов</h2>
+        <div class="row">
+          <div>
+             <label>Форма</label>
+             <select id="shape">
+               <option value="rect">Квадрат</option>
+               <option value="rounded" selected>Скругленный</option>
+               <option value="circle">Круг</option>
+               <option value="diamond">Ромб</option>
+               <option value="star">Звезда</option>
+             </select>
+          </div>
+          <div>
+             <label>Размер картинки (px)</label>
+             <input type="number" id="imgBox" value="160">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Цвет фона</label>
+            <input type="color" id="bgColor" value="#6366f1">
+          </div>
+          <div>
+            <label>Прозрачность фона</label>
+            <input type="range" id="opacity" value="1" step="0.1" min="0" max="1">
+          </div>
+        </div>
+        
+        <label>Фоновая картинка элемента (URL)</label>
+        <textarea id="bgImages" style="min-height:60px" placeholder="https://..."></textarea>
+        
+        <div class="row" style="margin-top:12px">
+           <div><label>Отступ внутри (px)</label><input type="number" id="pad" value="22"></div>
+        </div>
       </div>
-    </section>
+
+      <div class="card">
+        <h2><span>✨</span> Магия и Эффекты</h2>
+        <div class="row-3">
+           <div class="check-row">
+             <input type="checkbox" id="borderOn" checked>
+             <label for="borderOn">Рамка</label>
+           </div>
+           <input type="color" id="borderColor" value="#ffffff" style="height:46px">
+           <input type="number" id="borderWidth" value="2" placeholder="px">
+        </div>
+
+        <div class="row">
+          <div class="check-row">
+            <input type="checkbox" id="shadowOn" checked>
+            <label for="shadowOn">Тень</label>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="fx3d">
+            <label for="fx3d">3D Объем</label>
+          </div>
+        </div>
+        
+        <div class="row" style="align-items:center">
+           <div class="check-row">
+             <input type="checkbox" id="glowOn">
+             <label for="glowOn">Неон</label>
+           </div>
+           <input type="color" id="glowColor" value="#ff00ff" style="height:46px">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span>🔤</span> Текст</h2>
+        <div class="row">
+           <div>
+             <label>Цвет текста</label>
+             <input type="color" id="textColor" value="#ffffff">
+           </div>
+           <div>
+             <label>Размер (px)</label>
+             <input type="number" id="fontSize" value="28">
+           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span>💬</span> Сообщения</h2>
+        <div class="row">
+          <div>
+            <label>Заголовок старта</label>
+            <input type="text" id="startTitle" placeholder="Magic Game!">
+          </div>
+          <div>
+             <label>Кнопка старта</label>
+             <input type="text" id="startBtnText" placeholder="Start">
+          </div>
+        </div>
+        <label>Финал (Текст или Картинка)</label>
+        <textarea id="finalFeedback" placeholder="You are amazing!"></textarea>
+      </div>
+
+    </div>
+
+    <div class="sticky-col">
+      
+      <div class="card preview-sticky-wrap">
+        <h2 style="font-size:12px; color:#aaa; margin-bottom:10px; border:none">ПРЕДПРОСМОТР</h2>
+        <div class="row" style="margin-bottom:0; gap:8px">
+           <input type="text" id="previewValue" value="Dream">
+           <div style="display:flex; gap:4px">
+             <button class="btn-ghost" id="btnText" style="width:auto; padding:0 12px">T</button>
+             <button class="btn-ghost" id="btnImage" style="width:auto; padding:0 12px">🖼️</button>
+           </div>
+        </div>
+
+        <div class="preview-stage">
+          <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#ff00ff;">
+            <div class="bg-layer"></div>
+            <div class="content-layer">
+               <span id="previewText" style="font-weight:700; font-size:28px">Dream</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="levels"></div>
+      
+      <button id="addLevel" class="btn-ghost" style="border: 2px dashed rgba(255,255,255,0.3); margin-bottom: 24px; color:#fff">
+        ➕ Добавить уровень
+      </button>
+
+      <div class="card" style="background:#0f172a; border-color:var(--neon-cyan)">
+        <h2 style="color:var(--neon-cyan)">🚀 Публикация</h2>
+        <button id="saveBtn" style="margin-bottom:12px">💾 Сохранить Игру</button>
+        <button id="copyBtn" class="btn-ghost" style="font-size:12px; margin-bottom:8px">Копировать код</button>
+        <textarea id="iframeOut" readonly onclick="this.select()" placeholder="Код для вставки..."></textarea>
+      </div>
+
+    </div>
   </main>
-
-  <footer>© 2026 KGB Game Corp</footer>
 
   <script>
     const $ = sel => document.querySelector(sel);
     const $$ = sel => document.querySelectorAll(sel);
 
+    // ✨ ГЕНЕРАТОР ПУЗЫРЕЙ
+    function createBubbles() {
+      const container = document.getElementById('bubbles');
+      const bubbleCount = 20;
+      for (let i = 0; i < bubbleCount; i++) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        const size = Math.random() * 60 + 20;
+        b.style.width = size + 'px';
+        b.style.height = size + 'px';
+        b.style.left = Math.random() * 100 + '%';
+        b.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        b.style.animationDelay = (Math.random() * 10) + 's';
+        container.appendChild(b);
+      }
+    }
+
+    // ШРИФТЫ
     const FONT_MAP = {
-      ru: ["PT Sans","Rubik","Lobster","Marck Script","Cormorant","Montserrat","Open Sans","Noto Sans"],
-      en: ["Roboto","Open Sans","Montserrat","Inter","Poppins","Playfair Display","Indie Flower","Rubik"],
-      fr: ["Noto Sans","Playfair Display","Parisienne","Montserrat","Rubik"],
-      es: ["Montserrat","Alegreya","Caveat","Roboto","Rubik"],
-      de: ["PT Sans","Rubik","Inter","Montserrat","Playfair Display"],
-      zh: ["Noto Sans SC","ZCOOL XiaoWei","Ma Shan Zheng"],
-      ja: ["Noto Sans JP","Noto Serif JP","Kosugi Maru"],
-      math: ["Latin Modern Math","Rubik"]
+      ru: ["Nunito", "Rubik", "Comfortaa", "Pacifico", "Lobster", "Caveat", "Amatic SC", "Russo One", "Press Start 2P", "Montserrat"],
+      en: ["Nunito", "Quicksand", "Fredoka One", "Bangers", "Creepster", "Monoton", "Righteous", "Orbitron", "Sacramento", "Indie Flower"],
+      ja: ["Dela Gothic One", "Kosugi Maru", "Kiwi Maru", "DotGothic16", "Noto Sans JP"],
+      zh: ["ZCOOL KuaiLe", "Ma Shan Zheng", "ZCOOL QingKe HuangYou", "Noto Sans SC"],
+      de: ["Fredoka One", "Patrick Hand", "Bangers", "Rubik", "Open Sans"],
+      it: ["Lobster", "Montserrat", "Lato", "Playfair Display", "Patrick Hand"],
+      es: ["Pacifico", "Amatic SC", "Montserrat", "Bangers", "Titan One"],
+      fr: ["Parisienne", "Comfortaa", "Montserrat", "Patrick Hand", "Rubik"],
+      math: ["Latin Modern Math", "Rubik"]
     };
-    const LANG_LABELS = {
-      ru:"Русский", en:"English", fr:"Français", es:"Español",
-      de:"Deutsch", zh:"中文", ja:"日本語", math:"Математика (LaTeX)"
+
+    const LANG_NAMES = {
+      ru: "Русский 🇷🇺", en: "English 🇬🇧", ja: "日本語 🇯🇵", zh: "中文 🇨🇳", 
+      de: "Deutsch 🇩🇪", it: "Italiano 🇮🇹", es: "Español 🇪🇸", fr: "Français 🇫🇷", math: "Math 📐"
     };
+
+    function init(){
+      createBubbles();
+      fillLanguageSelect();
+      fillFontsForLanguage('ru');
+      addLevel();
+      applyGoogleFont('Nunito');
+      updatePreview();
+      
+      // Listeners
+      $$('input, select, textarea').forEach(el => {
+        el.oninput = updatePreview;
+        el.onchange = updatePreview;
+      });
+      
+      $('#btnText').onclick = () => { $('#previewItem').dataset.mode='text'; updatePreview(); };
+      $('#btnImage').onclick = () => { $('#previewItem').dataset.mode='image'; updatePreview(); };
+      $('#addLevel').onclick = addLevel;
+      $('#saveBtn').onclick = publish;
+      $('#saveBtnTop').onclick = publish;
+      $('#copyBtn').onclick = () => { $('#iframeOut').select(); document.execCommand('copy'); };
+      
+      $('#language').onchange = (e) => { fillFontsForLanguage(e.target.value); updatePreview(); };
+      $('#font').onchange = (e) => { applyGoogleFont(e.target.value); updatePreview(); };
+    }
 
     function fillLanguageSelect(){
       const sel = $('#language');
-      sel.innerHTML = '';
-      Object.keys(FONT_MAP).forEach(k=>{
-        const opt = document.createElement('option');
-        opt.value = k; opt.textContent = LANG_LABELS[k];
-        sel.appendChild(opt);
-      });
-      sel.value = 'ru';
+      sel.innerHTML = Object.keys(FONT_MAP).map(k => `<option value="${k}">${LANG_NAMES[k]}</option>`).join('');
     }
+
     function fillFontsForLanguage(lang){
       const sel = $('#font');
-      sel.innerHTML = '';
-      (FONT_MAP[lang] || FONT_MAP.en).forEach(f=>{
-        const opt = document.createElement('option');
-        opt.textContent = f;
-        sel.appendChild(opt);
-      });
-      sel.value = FONT_MAP[lang][0];
-      applyGoogleFont(sel.value);
+      const list = FONT_MAP[lang] || FONT_MAP.en;
+      sel.innerHTML = list.map(f => `<option>${f}</option>`).join('');
+      sel.value = list[0];
     }
 
     function applyGoogleFont(fontName){
-      const gf = document.getElementById('gf');
-      const family = fontName.replace(/ /g, '+');
-      gf.href = `https://fonts.googleapis.com/css2?family=${family}:wght@400;700&display=swap`;
-      const text = $('#previewText');
-      text.style.fontFamily = fontName + ", system-ui, sans-serif";
-      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
-      document.body.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
-    }
-
-    function parseBgList(){
-      const raw = ($('#bgImages')?.value || '').split(/\n|,/).map(s => s.trim()).filter(Boolean);
-      return raw.filter(u => /^https?:\/\//i.test(u));
-    }
-
-    function currentPreviewBackground(){
-      const list = parseBgList();
-      if(list.length){
-        const pick = list[Math.floor(Math.random() * list.length)];
-        return `url(${pick}) center/contain no-repeat`;
-      }
-      return $('#bgColor').value;
+      $('#gf').href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g,'+')}:wght@400;700&display=swap`;
+      const txt = $('#previewText');
+      txt.style.fontFamily = `"${fontName}", system-ui`;
     }
 
     function updatePreview(){
       const item = $('#previewItem');
+      const bgLayer = item.querySelector('.bg-layer');
+      const contentLayer = item.querySelector('.content-layer');
       const text = $('#previewText');
-      const val  = $('#previewValue').value.trim();
-      const asImage = item.dataset.mode === 'image' || /^https?:\/\//i.test(val);
+      const val  = $('#previewValue').value;
+      const isImg = item.dataset.mode === 'image';
 
-      item.className = 'preview-item';
-      item.style.setProperty('--glow', $('#glowColor').value);
-      item.classList.add('shape-' + $('#shape').value);
-      item.classList.toggle('fx-shadow', $('#shadowOn').checked);
-      item.classList.toggle('fx-3d', $('#fx3d').checked);
-      item.classList.toggle('fx-glow', $('#glowOn').checked);
+      item.className = `preview-item shape-${$('#shape').value}`;
+      if($('#shadowOn').checked) item.classList.add('fx-shadow');
+      if($('#fx3d').checked) item.classList.add('fx-3d');
+      if($('#glowOn').checked) {
+        item.classList.add('fx-glow');
+        item.style.setProperty('--glow', $('#glowColor').value);
+      } else item.classList.remove('fx-glow');
 
-      if($('#borderOn').checked && Number($('#borderWidth').value) > 0){
-        item.classList.add('fx-border');
-        item.style.borderWidth = Number($('#borderWidth').value) + 'px';
-        item.style.borderColor = $('#borderColor').value;
+      if($('#borderOn').checked){
+        bgLayer.style.border = `${$('#borderWidth').value}px solid ${$('#borderColor').value}`; 
+      } else bgLayer.style.border = 'none';
+
+      const bgList = ($('#bgImages').value||'').split('\n').filter(s=>s.trim().startsWith('http'));
+      if(bgList.length){
+        bgLayer.style.backgroundImage = `url(${bgList[0]})`;
+        bgLayer.style.backgroundColor = 'transparent';
       } else {
-        item.classList.remove('fx-border');
-        item.style.borderWidth = '0px';
-        item.style.borderColor = 'transparent';
+        bgLayer.style.backgroundImage = 'none';
+        bgLayer.style.backgroundColor = $('#bgColor').value;
       }
-
-      item.style.background = currentPreviewBackground();
-      const op = Math.max(0, Math.min(1, parseFloat($('#opacity').value || '1')));
-      item.style.opacity = op;
+      
+      bgLayer.style.opacity = $('#opacity').value;
 
       text.style.color = $('#textColor').value;
-      text.style.fontSize = (parseInt($('#fontSize').value,10)||24) + 'px';
-      text.style.fontFamily = $('#font').value + ", system-ui, sans-serif";
+      text.style.fontSize = $('#fontSize').value + 'px';
+      text.style.fontFamily = `"${$('#font').value}", system-ui`;
 
-      if(asImage){
-        item.dataset.mode = 'image';
-        text.style.display = 'none';
-        if(!item.querySelector('img')) item.appendChild(document.createElement('img'));
-        const img = item.querySelector('img');
-        img.src = val || 'https://via.placeholder.com/200x140?text=Image';
-        const box = Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10)));
-        item.style.setProperty('--cw', box + 'px');
-        item.style.setProperty('--ch', box + 'px');
+      if(isImg || val.startsWith('http')){
+        contentLayer.innerHTML = `<img src="${val.startsWith('http')?val:'https://via.placeholder.com/150'}" style="width:100%;height:100%;object-fit:contain">`;
+        const sz = $('#imgBox').value || 160;
+        item.style.width = sz+'px'; item.style.height = sz+'px';
       } else {
-        item.dataset.mode = 'text';
-        if(item.querySelector('img')) item.querySelector('img').remove();
-        text.style.display = 'block';
-        text.textContent = val || 'Preview';
-        item.style.removeProperty('--cw');
-        item.style.removeProperty('--ch');
+        contentLayer.innerHTML = '';
+        contentLayer.appendChild(text);
+        text.textContent = val;
+        item.style.width = 'auto'; item.style.height = 'auto';
+        item.style.minWidth = '120px'; item.style.minHeight = '80px';
       }
-      const pad = Math.max(0, parseInt($('#pad').value||'22', 10));
-      item.style.padding = pad + 'px';
+      contentLayer.style.padding = $('#pad').value + 'px';
     }
 
-    function levelTemplate(idx){
-      const wrap = document.createElement('div');
-      wrap.className = 'level';
-      wrap.innerHTML = `
-        <h3>Уровень <span class="num">${idx+1}</span>
-          <span class="right">
-            <button type="button" class="btn-ghost up">▲</button>
-            <button type="button" class="btn-ghost down">▼</button>
-            <button type="button" class="btn-danger del">Удалить</button>
-          </span>
-        </h3>
-        <label>Target</label>
-        <input type="text" class="target" placeholder="Название цели">
-        <div class="row">
-          <div>
-            <label>Правильные</label>
-            <textarea class="correct" placeholder="sun\nstar"></textarea>
-          </div>
-          <div>
-            <label>Неправильные</label>
-            <textarea class="wrong" placeholder="dog\nmoon"></textarea>
-          </div>
+    function levelTemplate(i){
+      const div = document.createElement('div');
+      div.className = 'level';
+      div.innerHTML = `
+        <div class="level-header">
+           <h3>УРОВЕНЬ ${i+1}</h3>
+           <button class="btn-danger del">Удалить</button>
         </div>
+        <input type="text" class="target" placeholder="Цель (например: Past Simple)" style="margin-bottom:8px">
         <div class="row">
-          <div>
-            <label>Таймер (сек.)</label>
-            <input type="number" class="timer" value="30" min="5">
-          </div>
+           <textarea class="correct" placeholder="Правильно..."></textarea>
+           <textarea class="wrong" placeholder="Неправильно..."></textarea>
         </div>
+        <label>Таймер (сек)</label>
+        <input type="number" class="timer" value="30" style="width:80px">
       `;
-      wrap.querySelector('.del').onclick = () => { wrap.remove(); renumber(); };
-      wrap.querySelector('.up').onclick  = () => { const p=wrap.previousElementSibling; if(p){ wrap.parentNode.insertBefore(wrap,p); renumber(); } };
-      wrap.querySelector('.down').onclick= () => { const n=wrap.nextElementSibling; if(n){ wrap.parentNode.insertBefore(n,wrap); renumber(); } };
-      return wrap;
+      div.querySelector('.del').onclick = () => { div.remove(); };
+      return div;
     }
-    function renumber(){ $$('#levels .level .num').forEach((el,i)=> el.textContent = i+1); }
-    function addLevel(){ $('#levels').appendChild(levelTemplate($$('#levels .level').length)); renumber(); }
+
+    function addLevel(){ $('#levels').appendChild(levelTemplate($$('#levels .level').length)); }
 
     function collectConfig(){
       const levels = [];
-      $$('#levels .level').forEach(div=>{
+      $$('.level').forEach(l => {
         levels.push({
-          target: div.querySelector('.target').value.trim(),
-          correct: div.querySelector('.correct').value.split('\n').map(s=>s.trim()).filter(Boolean),
-          wrong:   div.querySelector('.wrong').value.split('\n').map(s=>s.trim()).filter(Boolean),
-          timer:   Math.max(5, parseInt(div.querySelector('.timer').value||'30',10))
+          target: l.querySelector('.target').value.trim(),
+          correct: l.querySelector('.correct').value.split('\n').filter(s=>s.trim()),
+          wrong: l.querySelector('.wrong').value.split('\n').filter(s=>s.trim()),
+          timer: l.querySelector('.timer').value
         });
       });
 
       return {
         language: $('#language').value,
         font: $('#font').value,
-        fontSize: Math.max(10, parseInt($('#fontSize').value||'24',10)),
+        fontSize: $('#fontSize').value,
         textColor: $('#textColor').value,
-        speed: Math.max(1, Math.min(10, parseInt($('#speed').value||'5',10))),
+        speed: $('#speed').value,
         style: {
           shape: $('#shape').value,
-          pad: Math.max(0, parseInt($('#pad').value||'22',10)),
+          pad: $('#pad').value,
           bgColor: $('#bgColor').value,
-          bgImage: ($('#bgImages')?.value || '').trim(),
-          bgImages: parseBgList($('#bgImages')?.value || ''),
+          bgImages: ($('#bgImages').value||'').split('\n').filter(s=>s.trim()),
           borderOn: $('#borderOn').checked,
           borderColor: $('#borderColor').value,
-          borderWidth: Math.max(0, parseInt($('#borderWidth').value||'0', 10)),
+          borderWidth: $('#borderWidth').value,
           shadow: $('#shadowOn').checked,
           glow: $('#glowOn').checked,
           glowColor: $('#glowColor').value,
           fx3d: $('#fx3d').checked,
-          opacity: Math.max(0, Math.min(1, parseFloat($('#opacity').value||'1'))),
-          imgBox: Math.max(80, Math.min(260, parseInt($('#imgBox').value||'160',10))),
+          opacity: $('#opacity').value,
+          imgBox: $('#imgBox').value
         },
         player: {
-          img: ($('#playerImg')?.value || '').trim(),
-          width: parseInt($('#playerWidth')?.value||'100', 10),
-          height: parseInt($('#playerHeight')?.value||'100', 10)
+          img: $('#playerImg').value.trim(),
+          width: $('#playerWidth').value,
+          height: $('#playerHeight').value
         },
-        randomLevels: false,
-        start: {
-          title: ($('#startTitle')?.value || '').trim(),
-          btnText: ($('#startBtnText')?.value || '').trim()
-        },
-        direction: (['down','up','left','right'].includes($('#direction')?.value) ? $('#direction').value : 'down'),
-        finalFeedback: $('#finalFeedback').value.trim(),
-        levels
+        direction: $('#direction').value,
+        start: { title: $('#startTitle').value, btnText: $('#startBtnText').value },
+        finalFeedback: $('#finalFeedback').value,
+        levels: levels
       };
     }
 
-    // === ПУБЛИКАЦИЯ ===
-    const ENDPOINT    = "https://server-kjnn.onrender.com/publish";
-    const PUBLISH_KEY = "nika_read_pub_2025";
-    const BASE_MAIN   = "https://nikashum93.github.io/catcher/main.html";
+    const ENDPOINT = "https://server-kjnn.onrender.com/publish";
+    const KEY = "nika_read_pub_2025";
+    const BASE = "https://nikashum93.github.io/catcher/main.html";
 
     async function publish(){
       const cfg = collectConfig();
-      if(!cfg.levels.length) return alert('Добавьте уровень!');
-      applyGoogleFont(cfg.font);
-      const id = makeIdFromFirstTarget(cfg);
-      const payload = {
-        id, mode: "json", folder: "data",
-        content: JSON.stringify(cfg, null, 2)
-      };
-      try{
+      if(!cfg.levels.length || !cfg.levels[0].target) return alert("Добавь уровень!");
+      
+      const btn = $('#saveBtnTop');
+      const oldTxt = btn.textContent;
+      btn.textContent = "⏳...";
+      btn.disabled = true;
+
+      const id = (cfg.levels[0].target.replace(/[^a-z0-9]/gi,'-') + '-' + Date.now()).toLowerCase();
+      
+      try {
         const res = await fetch(ENDPOINT, {
-          method: "POST", headers: { "Content-Type": "application/json", "X-Publish-Key": PUBLISH_KEY },
-          body: JSON.stringify(payload)
+           method:'POST',
+           headers: {'Content-Type':'application/json', 'X-Publish-Key': KEY},
+           body: JSON.stringify({ id, mode:'json', folder:'data', content: JSON.stringify(cfg) })
         });
-        if(!res.ok) throw new Error(await res.text());
-        const iframe = `<iframe src="${BASE_MAIN}?id=${encodeURIComponent(id)}" width="900" height="640" style="border:0;" allow="autoplay" allowfullscreen></iframe>`;
-        $('#iframeOut').value = iframe;
-        alert('Готово! Подождите минуту (GitHub кеш).');
-      }catch(e){ alert("Ошибка: " + e.message); }
+        if(!res.ok) throw new Error();
+        
+        const code = `<iframe src="${BASE}?id=${id}" width="900" height="600" style="border:0" allow="autoplay; fullscreen"></iframe>`;
+        $('#iframeOut').value = code;
+        alert("✅ Игра готова!");
+      } catch(e) {
+        alert("❌ Ошибка.");
+      }
+      btn.textContent = oldTxt;
+      btn.disabled = false;
     }
-
-    function makeIdFromFirstTarget(cfg){
-      const slug = (cfg.levels[0]?.target||'game').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,30);
-      const d=new Date(),p=n=>String(n).padStart(2,'0');
-      const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-      return `${slug}-${stamp}`;
-    }
-
-    function quickTest(){ console.log(collectConfig()); alert('JSON в консоли'); }
-    function copyIframe(){ $('#iframeOut').select(); document.execCommand('copy'); }
-
-    // События
-    $('#language').addEventListener('change', e=>{ fillFontsForLanguage(e.target.value); updatePreview(); });
-    $('#font').addEventListener('change', e=> { applyGoogleFont(e.target.value); updatePreview(); });
-    ['textColor','opacity','shape','bgColor','bgImages','borderColor','borderWidth','borderOn','shadowOn','glowOn','glowColor','fx3d','previewValue','speed','pad','direction','startTitle','startBtnText','imgBox'].forEach(id => { 
-       if($('#'+id)) $('#'+id).addEventListener('input', updatePreview); 
-    });
-    $('#btnText').onclick = (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='text'; updatePreview(); }
-    $('#btnImage').onclick= (e)=>{ e.preventDefault(); $('#previewItem').dataset.mode='image'; updatePreview(); }
-    $('#addLevel').onclick = (e)=>{ e.preventDefault(); addLevel(); };
-    $('#saveBtn').onclick = publish;
-    $('#testBtn').onclick = quickTest;
-    $('#copyBtn').onclick = copyIframe;
-
-    fillLanguageSelect();
-    fillFontsForLanguage($('#language').value);
-    addLevel();
-    applyGoogleFont($('#font').value);
-    updatePreview();
+    
+    init();
   </script>
 </body>
 </html>
