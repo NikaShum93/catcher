@@ -9,13 +9,12 @@
     
     /* === БАЗА === */
     html,body{height:100%}
-    /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
     #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
     /* === HUD === */
     .hud{
-      position:fixed; left:12px; top:12px; right:12px; display:none; /* Скрыт до старта */
+      position:fixed; left:12px; top:12px; right:12px; display:none; 
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
       gap:12px;
     }
@@ -33,15 +32,15 @@
     }
     .touch-zone { position: fixed; z-index: 5; }
 
-    /* === ОВЕРЛЕИ (ПРОЗРАЧНЫЙ ФОН!) === */
+    /* === ОВЕРЛЕИ === */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
-      background: transparent !important; /* УБРАЛИ ЗАТЕМНЕНИЕ */
+      background: transparent !important; 
       z-index:500;
       pointer-events: auto;
     }
     .overlay .panel{
-      background: rgba(20, 20, 20, 0.95); /* Сама плашка темная */
+      background: rgba(20, 20, 20, 0.95); 
       border: 1px solid rgba(255, 255, 255, 0.15); color:#fff; border-radius:24px;
       padding:40px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
       max-width: 480px; width: 90%; position: relative; z-index: 501; max-height: 90vh; overflow-y: auto;
@@ -84,7 +83,6 @@
       transition:filter .15s ease;
       background-position:center !important;
       background-repeat:no-repeat !important;
-      /* ИСПРАВЛЕНИЕ: contain - сохраняет пропорции картинки! */
       background-size: contain !important; 
     }
     
@@ -133,19 +131,22 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === ИСПРАВЛЕННАЯ СКОРОСТЬ (ЕЩЕ МЕДЛЕННЕЕ) ===
+    // === БАЛАНС СКОРОСТИ И ПОЯВЛЕНИЯ ===
     function computeSpeedParams(S){
-      // S от 1 до 10. 
+      // S от 1 до 10 (сложность).
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
       
-      // Базовая скорость падения пикселей за кадр (было слишком быстро)
-      // Теперь от 0.3 (очень медленно) до 2.0 (нормально быстро)
-      const vel = 0.3 + (2.0 - 0.3) * Math.pow(t, 1.5); 
+      // Скорость: от 0.6 (плавно, не висит) до 3.0 (довольно быстро)
+      const vel = 0.6 + (3.0 - 0.6) * Math.pow(t, 1.4); 
       
-      const spawn = 2200 - (2200 - 600) * t; 
+      // Частота проверки (REFILL RATE): 
+      // Проверяем часто (600мс - 1000мс), есть ли место на экране.
+      // Само ограничение количества делается в spawnLoop (if count < 3)
+      const spawnCheckRate = 1000 - (400 * t); 
+
       const basePts = 5 + (50 - 5) * t;
-      return { vel, spawn, basePts: Math.round(basePts) };
+      return { vel, spawn: spawnCheckRate, basePts: Math.round(basePts) };
     }
     
     const I18N = {
@@ -169,10 +170,13 @@
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, spawn: 1500, basePts: 20 };
+    let SPEED = { vel: 1.0, spawn: 800, basePts: 20 };
     let IS_HORIZONTAL = false;
     let spawnTimer = null;
     let lastZone = -1;
+    
+    // МАКСИМУМ ПРЕДМЕТОВ НА ЭКРАНЕ
+    const MAX_ITEMS = 3;
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -326,9 +330,14 @@
 
     function spawnLoop(lv){
       const pool = [...lv.correct.map(v=>({v,g:true})), ...lv.wrong.map(v=>({v,g:false}))];
+      
       const next = () => {
          if(!running) return;
-         if(document.querySelectorAll('.item').length < 6) drop(pool[Math.floor(Math.random()*pool.length)]);
+         // ЖЕСТКИЙ ЛИМИТ: НЕ БОЛЕЕ 3 ШТУК ОДНОВРЕМЕННО
+         if(document.querySelectorAll('.item').length < MAX_ITEMS) {
+            drop(pool[Math.floor(Math.random()*pool.length)]);
+         }
+         // ПРОВЕРЯЕМ СКОРО (ЗАВИСИТ ОТ СКОРОСТИ, НО БЫСТРО), ЧТОБЫ ЗАПОЛНИТЬ ПУСТОТУ
          spawnTimer = setTimeout(next, SPEED.spawn);
       };
       next();
@@ -363,7 +372,6 @@
       const con = document.createElement('div');
       con.className = 'content';
       
-      // Паддинги из конфига для контента
       const PAD = Number(STYLE.pad || 22);
       con.style.padding = `6px ${PAD}px`;
       
@@ -405,33 +413,28 @@
       if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === ИСПРАВЛЕНИЕ РАЗМЕРОВ: КВАДРАТ ДЛЯ ФРУКТОВ, ЧТОБЫ НЕ РАСТЯГИВАЛИСЬ ===
+    // === РАСЧЕТ РАЗМЕРОВ ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
-       
        el.style.width = ''; el.style.height='';
        
        const r = content.getBoundingClientRect();
        const PAD = Number(STYLE.pad || 22);
 
-       // 1. Измеряем ширину, которая нужна тексту
+       // 1. Ширина с учетом паддингов
+       // Уменьшил множитель паддинга, чтобы не были такими огромными
        let wNeeded = Math.ceil(r.width + PAD); 
        let hNeeded = Math.ceil(r.height + 10);
 
-       // 2. Чтобы картинка (contain) не сплющивалась, контейнер должен быть пропорциональным.
-       // Для фруктов (обычно круглых) лучше всего квадрат.
-       // Берем МАКСИМУМ из ширины и высоты, чтобы вместить и длинный текст, и не сплющить фрукт.
+       // 2. Квадрат, чтобы не плющило
        const size = Math.max(wNeeded, hNeeded);
-
-       // Применяем размер квадратом (или близко к нему)
+       
        el.style.width = size + 'px';
        el.style.height = size + 'px';
-       
-       // Центрируем контент внутри этого квадрата (flexbox в CSS уже делает это)
     }
 
-    // === СИСТЕМА ЗОН (АНТИ-КУЧКОВАНИЕ) ===
+    // === ЗОНЫ ===
     function setStartPosition(el) {
       const dir = cfg.direction || 'down';
       const elW = el.offsetWidth || 100;
@@ -460,6 +463,7 @@
           else x = -250; 
           
       } else {
+          // ДЕЛИМ НА 4 ВЕРТИКАЛЬНЫЕ КОЛОНКИ
           const zones = 4;
           const W = window.innerWidth;
           const zoneW = (W - 40) / zones; 
