@@ -34,13 +34,13 @@
     }
 
     /* --- ИГРОК --- */
+    /* Начальная позиция задается теперь в JS, т.к. зависит от режима */
     #player {
-      position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-      z-index: 100; pointer-events: none; background-position: bottom center; 
-      background-size: contain; background-repeat: no-repeat; will-change: left;
+      position: absolute; z-index: 100; pointer-events: none; 
+      background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
-    .touch-zone { position: fixed; top:0; bottom:0; width: 50%; z-index: 5; }
-    #zoneL { left: 0; } #zoneR { right: 0; }
+    .touch-zone { position: fixed; z-index: 5; }
+    /* Стиль зон тоже задается в JS */
 
     /* --- ЭКРАНЫ --- */
     .overlay{
@@ -58,7 +58,6 @@
     }
     .overlay h2{ margin:0 0 5px; font-size:26px; color:var(--ui); }
     
-    /* Стили для Ранга */
     .overlay h3.rank { 
       margin: 0 0 15px; font-size: 24px; font-weight: 900;
       background: linear-gradient(90deg, #fff, var(--glow), #fff); 
@@ -68,7 +67,6 @@
     }
     @keyframes pulseRank { 0%{opacity:0.8; transform:scale(0.98)} 50%{opacity:1; transform:scale(1.02)} 100%{opacity:0.8; transform:scale(0.98)} }
 
-    /* Таблица статистики */
     .stats-grid {
       display: grid; grid-template-columns: 1fr; gap: 8px;
       background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;
@@ -87,13 +85,12 @@
     }
     .overlay button:hover { transform: translateY(-2px); opacity: 0.9; }
 
-    /* --- ПАДАЮЩИЕ ЭЛЕМЕНТЫ --- */
+    /* --- ЭЛЕМЕНТЫ --- */
     .item{
-      position:absolute; top:-200px; left:0; transform:translateZ(0);
+      position:absolute; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
       min-width:100px; min-height:80px; padding:0; user-select:none; cursor:pointer;
-      z-index: 10;
-      box-sizing: border-box; 
+      z-index: 10; box-sizing: border-box; 
     }
     
     .item .bg{
@@ -107,8 +104,7 @@
       display:flex; align-items:center; justify-content:center;
       text-align:center; padding: 12px;
       width: var(--cw, auto); height: var(--ch, auto);
-      text-shadow: none !important; 
-      font-weight: 700; line-height: 1.2;
+      text-shadow: none !important; font-weight: 700; line-height: 1.2;
     }
     
     .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
@@ -143,17 +139,24 @@
     <div class="badge score" id="hudScore">0</div>
   </div>
   <div id="game">
-    <div id="touchLayer" style="display:none">
-       <div id="zoneL" class="touch-zone"></div>
-       <div id="zoneR" class="touch-zone"></div>
     </div>
-  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
   <script>
     const $ = sel => document.querySelector(sel);
     const rnd = (a,b)=> a + Math.random()*(b-a);
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    // --- СКОРОСТЬ (БАЛАНС 0.2 ... 3.5) ---
+    function computeSpeedParams(S){
+      const s = clamp(Number(S||5), 1, 10);
+      const t = (s - 1) / 9; 
+      const vel = 0.2 + (3.5 - 0.2) * Math.pow(t, 1.5); 
+      const spawn = 2500 - (2500 - 600) * t;
+      const basePts = 5 + (50 - 5) * t;
+      return { vel, spawn, basePts: Math.round(basePts) };
+    }
     
     // --- ЛОКАЛИЗАЦИЯ И РАНГИ ---
     const I18N = {
@@ -165,34 +168,13 @@
         ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"],
         stats: { hits: "Caught", wrong: "Mistakes", missed: "Missed", total: "SCORE" }
       },
-      de: { 
-        ranks: ["Anfänger", "Lehrling", "Ninja", "Großmeister", "REAKTIONSGOTT"],
-        stats: { hits: "Gefangen", wrong: "Fehler", missed: "Verpasst", total: "PUNKTE" }
-      },
-      es: { 
-        ranks: ["Novato", "Aprendiz", "Ninja", "Gran Maestro", "DIOS DE LA REACCIÓN"],
-        stats: { hits: "Atrapados", wrong: "Errores", missed: "Perdidos", total: "PUNTOS" }
-      },
-      it: { 
-        ranks: ["Novizio", "Apprendista", "Ninja", "Gran Maestro", "DIO DELLA REAZIONE"],
-        stats: { hits: "Presi", wrong: "Errori", missed: "Persi", total: "PUNTI" }
-      },
-      fr: { 
-        ranks: ["Novice", "Apprenti", "Ninja", "Grand Maître", "DIEU DE LA RÉACTION"],
-        stats: { hits: "Attrapés", wrong: "Erreurs", missed: "Ratés", total: "SCORE" }
-      },
-      zh: { 
-        ranks: ["新手", "学徒", "忍者", "特级大师", "反应之神"],
-        stats: { hits: "捕获", wrong: "错误", missed: "错过", total: "总分" }
-      },
-      ja: { 
-        ranks: ["初心者", "見習い", "忍者", "グランドマスター", "反射神経の神"],
-        stats: { hits: "捕獲", wrong: "ミス", missed: "逃した", total: "スコア" }
-      },
-      math: { // Math mode uses English defaults
-        ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"],
-        stats: { hits: "Solved", wrong: "Errors", missed: "Missed", total: "SCORE" }
-      }
+      de: { ranks: ["Anfänger", "Lehrling", "Ninja", "Großmeister", "REAKTIONSGOTT"], stats: { hits: "Gefangen", wrong: "Fehler", missed: "Verpasst", total: "PUNKTE" } },
+      es: { ranks: ["Novato", "Aprendiz", "Ninja", "Gran Maestro", "DIOS DE LA REACCIÓN"], stats: { hits: "Atrapados", wrong: "Errores", missed: "Perdidos", total: "PUNTOS" } },
+      it: { ranks: ["Novizio", "Apprendista", "Ninja", "Gran Maestro", "DIO DELLA REAZIONE"], stats: { hits: "Presi", wrong: "Errori", missed: "Persi", total: "PUNTI" } },
+      fr: { ranks: ["Novice", "Apprenti", "Ninja", "Grand Maître", "DIEU DE LA RÉACTION"], stats: { hits: "Attrapés", wrong: "Erreurs", missed: "Ratés", total: "SCORE" } },
+      zh: { ranks: ["新手", "学徒", "忍者", "特级大师", "反应之神"], stats: { hits: "捕获", wrong: "错误", missed: "错过", total: "总分" } },
+      ja: { ranks: ["初心者", "見習い", "忍者", "グランドマスター", "反射神経の神"], stats: { hits: "捕獲", wrong: "ミス", missed: "逃した", total: "スコア" } },
+      math: { ranks: ["Novice", "Apprentice", "Ninja", "Grandmaster", "GOD OF REACTION"], stats: { hits: "Solved", wrong: "Errors", missed: "Missed", total: "SCORE" } }
     };
 
     function t(lang, key){
@@ -200,7 +182,6 @@
       return dict[key] || I18N.en[key];
     }
 
-    // --- ЗВУКИ ---
     const SND = {
       pop: new Audio("https://github.com/NikaShum93/snow_quiz/raw/refs/heads/main/pop.mp3"),
       wrong: new Audio("https://github.com/NikaShum93/snow_quiz/raw/refs/heads/main/wrong.mp3"),
@@ -208,9 +189,11 @@
     };
     
     let cfg = null;
-    let playerNode = null, playerPos = {x:0, v:0}, keys = {l:false, r:false};
+    let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; // neg/pos = left/right OR up/down
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
-    let LANG = 'ru'; // По умолчанию
+    let LANG = 'ru'; 
+    let SPEED = { vel: 1.5, spawn: 1000, basePts: 20 };
+    let IS_HORIZONTAL = false;
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -222,6 +205,10 @@
     function startApp(data){
       cfg = data;
       LANG = cfg.language || 'ru';
+      SPEED = computeSpeedParams(cfg.speed);
+      
+      const dir = cfg.direction || 'down';
+      IS_HORIZONTAL = (dir === 'left' || dir === 'right');
       
       if(cfg.font) {
         const link = document.createElement('link');
@@ -247,14 +234,10 @@
       img.style.cssText = "position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;transition:background-image 0.5s";
       document.body.appendChild(img);
       const list = cfg.style?.bgImages || [];
-      
       if(list.length) img.style.backgroundImage = `url(${list[0]})`;
       else if(cfg.style?.bgImage) img.style.backgroundImage = `url(${cfg.style.bgImage})`;
       else img.style.backgroundColor = 'transparent'; 
-      
-      window.nextBg = () => {
-         if(list.length) img.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`;
-      };
+      window.nextBg = () => { if(list.length) img.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`; };
     }
 
     function setupPlayer(){
@@ -264,16 +247,74 @@
       playerNode.style.width = (cfg.player.width||100)+'px';
       playerNode.style.height = (cfg.player.height||100)+'px';
       playerNode.style.backgroundImage = `url(${cfg.player.img})`;
+      
+      const dir = cfg.direction || 'down';
+      
+      // ПОЗИЦИЯ ИГРОКА
+      if(IS_HORIZONTAL) {
+         playerPos.y = window.innerHeight / 2;
+         if(dir === 'left') {
+            // Ловец слева, летит слева -> игрок слева
+            playerNode.style.left = '20px';
+            playerNode.style.top = '50%';
+         } else {
+            // Ловец справа
+            playerNode.style.right = '20px';
+            playerNode.style.top = '50%';
+         }
+      } else {
+         // Вертикально
+         playerPos.x = window.innerWidth / 2;
+         if(dir === 'down') {
+            playerNode.style.bottom = '0px';
+            playerNode.style.left = '50%';
+         } else {
+            playerNode.style.top = '0px'; // для режима снизу-вверх (пузыри)
+            playerNode.style.left = '50%';
+         }
+      }
+      
       $('#game').appendChild(playerNode);
-      $('#touchLayer').style.display = 'block';
+      setupControls();
+      requestAnimationFrame(loopPlayer);
+    }
+
+    function setupControls(){
+      // Клавиатура
+      window.onkeydown = e => { 
+         if(IS_HORIZONTAL) {
+            if(e.key==='ArrowUp') keys.neg=true; 
+            if(e.key==='ArrowDown') keys.pos=true;
+         } else {
+            if(e.key==='ArrowLeft') keys.neg=true;
+            if(e.key==='ArrowRight') keys.pos=true;
+         }
+      };
+      window.onkeyup = e => {
+         if(IS_HORIZONTAL) {
+            if(e.key==='ArrowUp') keys.neg=false;
+            if(e.key==='ArrowDown') keys.pos=false;
+         } else {
+            if(e.key==='ArrowLeft') keys.neg=false;
+            if(e.key==='ArrowRight') keys.pos=false;
+         }
+      };
+
+      // Тач зоны
+      const gameDiv = $('#game');
+      const z1 = document.createElement('div'); z1.className='touch-zone';
+      const z2 = document.createElement('div'); z2.className='touch-zone';
       
-      playerPos.x = window.innerWidth/2;
+      if(IS_HORIZONTAL) {
+         // Верхняя половина = ВВЕРХ (neg), Нижняя = ВНИЗ (pos)
+         z1.style.cssText = "top:0; left:0; right:0; height:50%";
+         z2.style.cssText = "bottom:0; left:0; right:0; height:50%";
+      } else {
+         // Левая = ВЛЕВО (neg), Правая = ВПРАВО (pos)
+         z1.style.cssText = "top:0; left:0; bottom:0; width:50%";
+         z2.style.cssText = "top:0; right:0; bottom:0; width:50%";
+      }
       
-      const onKey = (k, s) => { if(k==='ArrowLeft') keys.l=s; if(k==='ArrowRight') keys.r=s; };
-      window.onkeydown = e => onKey(e.key, true);
-      window.onkeyup = e => onKey(e.key, false);
-      
-      const L=$('#zoneL'), R=$('#zoneR');
       const bind = (el, k) => {
         el.ontouchstart = e => { e.preventDefault(); keys[k]=true; };
         el.ontouchend = e => { e.preventDefault(); keys[k]=false; };
@@ -281,24 +322,34 @@
         el.onmouseup = () => keys[k]=false;
         el.onmouseleave = () => keys[k]=false;
       };
-      bind(L, 'l'); bind(R, 'r');
+      bind(z1, 'neg'); bind(z2, 'pos');
       
-      requestAnimationFrame(loopPlayer);
+      gameDiv.appendChild(z1); gameDiv.appendChild(z2);
     }
 
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
-      if(keys.l) playerPos.v -= 1.5;
-      if(keys.r) playerPos.v += 1.5;
+      
+      if(keys.neg) playerPos.v -= 1.5;
+      if(keys.pos) playerPos.v += 1.5;
       playerPos.v *= 0.85;
-      playerPos.x += playerPos.v;
+
+      if(IS_HORIZONTAL) {
+         playerPos.y += playerPos.v;
+         const h = playerNode.offsetHeight;
+         if(playerPos.y < h/2) { playerPos.y = h/2; playerPos.v=0; }
+         if(playerPos.y > window.innerHeight - h/2) { playerPos.y = window.innerHeight - h/2; playerPos.v=0; }
+         playerNode.style.top = playerPos.y + 'px';
+         playerNode.style.transform = 'translateY(-50%)'; // Центрирование
+      } else {
+         playerPos.x += playerPos.v;
+         const w = playerNode.offsetWidth;
+         if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
+         if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
+         playerNode.style.left = playerPos.x + 'px';
+         playerNode.style.transform = 'translateX(-50%)'; // Центрирование
+      }
       
-      // ГРАНИЦЫ ИГРОКА
-      const w = playerNode.offsetWidth;
-      if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
-      if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
-      
-      playerNode.style.left = playerPos.x + 'px';
       checkCollisions();
       requestAnimationFrame(loopPlayer);
     }
@@ -312,10 +363,8 @@
     function startLevel(){
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
-      
       window.nextBg();
       const lv = cfg.levels[currentLevel-1];
-      
       $('#hudLevel').textContent = lv.target || `${currentLevel}`;
       
       let time = lv.timer || 30;
@@ -331,17 +380,15 @@
           showLevelComplete();
         }
       }, 1000);
-      
       spawnLoop(lv);
     }
 
     function spawnLoop(lv){
       const pool = [...lv.correct.map(v=>({v,g:true})), ...lv.wrong.map(v=>({v,g:false}))];
-      
       const next = () => {
          if(!running) return;
          if(document.querySelectorAll('.item').length < 6) drop(pool[Math.floor(Math.random()*pool.length)]);
-         setTimeout(next, 1500 - (cfg.speed*100));
+         setTimeout(next, SPEED.spawn);
       };
       next();
     }
@@ -353,11 +400,9 @@
       el.dataset.good = data.g;
 
       const bg = document.createElement('div'); bg.className = 'bg';
-      
       if(sty.bgImages?.length) bg.style.backgroundImage = `url(${sty.bgImages[0]})`;
       else if(sty.bgColor) bg.style.backgroundColor = sty.bgColor;
       else bg.style.backgroundColor = 'transparent'; 
-      
       bg.style.opacity = sty.opacity || 1;
       if(sty.borderOn) bg.style.border = `2px solid ${sty.borderColor}`;
 
@@ -372,59 +417,63 @@
         con.style.color = cfg.textColor;
         if(cfg.language==='math') { con.textContent = `\\(${data.v}\\)`; MathJax.typesetPromise([con]); }
       }
-
       el.appendChild(bg); el.appendChild(con);
       
-      // БЕЗОПАСНЫЙ СПАВН (отступ от краев)
-      const safeMargin = 80; 
-      const maxW = window.innerWidth - safeMargin;
-      el.style.left = rnd(40, maxW)+'px';
+      const dir = cfg.direction || 'down';
+      
+      // СТАРТОВАЯ ПОЗИЦИЯ
+      if(IS_HORIZONTAL) {
+         // По Y рандомно
+         el.style.top = rnd(60, window.innerHeight-60) + 'px';
+         if(dir === 'left') el.style.left = (window.innerWidth + 100) + 'px'; // Летит налево
+         else el.style.left = '-150px'; // Летит направо
+      } else {
+         // По X рандомно
+         el.style.left = rnd(60, window.innerWidth-60) + 'px';
+         if(dir === 'down') el.style.top = '-150px';
+         else el.style.top = (window.innerHeight + 50) + 'px';
+      }
       
       if(!playerNode) el.onclick = () => catchItem(el);
-
       $('#game').appendChild(el);
       
-      let y = -150;
-      const speed = 1 + (cfg.speed*0.5);
-      const dir = cfg.direction === 'up' ? -1 : 1;
-      if(dir === -1) { y = window.innerHeight + 50; el.style.top = y+'px'; }
-
-      // Параметры покачивания
       let t = Math.random() * 100;
+      const speed = SPEED.vel;
       
       function fall(){
         if(!el.parentNode) return;
         t += 0.05;
-        y += speed * dir;
+        const sway = Math.sin(t) * 25; 
         
-        // --- 🚧 ЖЕСТКИЕ ГРАНИЦЫ И ПОКАЧИВАНИЕ ---
-        const sway = Math.sin(t) * 25; // амплитуда 25px
-        let curLeft = parseFloat(el.style.left);
-        const elW = el.offsetWidth || 100;
-        
-        // Математически ограничиваем X, чтобы не вылетал
-        // curLeft (базовая позиция) + sway (смещение) не должны выходить за [0, screenWidth]
-        let finalX = curLeft + sway;
-        
-        if (finalX < 10) { 
-           // Если улетает влево -> корректируем базу
-           curLeft += (10 - finalX); 
-           el.style.left = curLeft + 'px';
-        } else if (finalX > window.innerWidth - elW - 10) {
-           // Если улетает вправо -> корректируем базу
-           curLeft -= (finalX - (window.innerWidth - elW - 10));
-           el.style.left = curLeft + 'px';
-        }
-        
-        el.style.transform = `translateX(${sway}px)`;
-        el.style.top = y + 'px';
-        
-        if(y > window.innerHeight+100 || y < -200) {
-          // Улетел за экран
-          if(el.dataset.good === 'true') missed++; // Если был правильный - засчитываем пропуск
-          el.remove();
+        if(IS_HORIZONTAL) {
+           let x = parseFloat(el.style.left);
+           if(dir === 'left') x -= speed; else x += speed;
+           el.style.left = x + 'px';
+           el.style.transform = `translateY(${sway}px)`;
+           
+           // Удаление
+           if(x < -200 || x > window.innerWidth+200) {
+              if(el.dataset.good === 'true') missed++;
+              el.remove();
+           } else requestAnimationFrame(fall);
+           
         } else {
-          requestAnimationFrame(fall);
+           let y = parseFloat(el.style.top);
+           if(dir === 'down') y += speed; else y -= speed;
+           
+           // Границы покачивания
+           let curX = parseFloat(el.style.left);
+           const elW = el.offsetWidth || 100;
+           if(curX + sway < 10) el.style.left = (curX + (10 - (curX+sway))) + 'px';
+           else if (curX + sway > window.innerWidth - elW - 10) el.style.left = (curX - ((curX+sway) - (window.innerWidth - elW - 10))) + 'px';
+           
+           el.style.top = y + 'px';
+           el.style.transform = `translateX(${sway}px)`;
+           
+           if(y > window.innerHeight+100 || y < -200) {
+              if(el.dataset.good === 'true') missed++;
+              el.remove();
+           } else requestAnimationFrame(fall);
         }
       }
       requestAnimationFrame(fall);
@@ -432,7 +481,13 @@
 
     function checkCollisions(){
       const pRect = playerNode.getBoundingClientRect();
-      const hit = { l: pRect.left+20, r: pRect.right-20, t: pRect.top+20, b: pRect.bottom-10 };
+      // Хитбокс чуть меньше визуала
+      const hit = { 
+         l: pRect.left + pRect.width*0.2, 
+         r: pRect.right - pRect.width*0.2, 
+         t: pRect.top + pRect.height*0.2, 
+         b: pRect.bottom - pRect.height*0.2 
+      };
 
       document.querySelectorAll('.item').forEach(el => {
         if(el.dataset.caught) return;
@@ -446,14 +501,13 @@
     function catchItem(el){
       el.dataset.caught = true;
       const isGood = el.dataset.good === 'true';
-      
       if(isGood) {
-        score += 10; hits++;
-        floatText(el, "+10", "#0f0");
+        score += SPEED.basePts; hits++;
+        floatText(el, "+"+SPEED.basePts, "#0f0");
         try{ SND.pop.currentTime=0; SND.pop.play() }catch(e){}
       } else {
-        score = Math.max(0, score-10); wrongClicks++;
-        floatText(el, "-10", "#f00");
+        score = Math.max(0, score - SPEED.basePts); wrongClicks++;
+        floatText(el, "-"+SPEED.basePts, "#f00");
         try{ SND.wrong.currentTime=0; SND.wrong.play() }catch(e){}
         if(playerNode) {
             playerNode.style.filter = "grayscale(1) sepia(1) hue-rotate(-50deg) saturate(5)";
@@ -488,7 +542,6 @@
       const ov = document.createElement('div'); ov.className='overlay';
       try{ SND.win.currentTime=0; SND.win.play() }catch(e){}
       
-      // Расчет ранга
       const ranks = t(LANG, 'ranks');
       let rankIdx = 0;
       if (score >= 50) rankIdx = 1;
@@ -497,30 +550,22 @@
       if (score >= 500) rankIdx = 4;
       const rankName = ranks[rankIdx];
 
-      // Тексты статистики
       const TXT = t(LANG, 'stats');
-
-      // Фидбек (картинка или текст)
       const fbVal = cfg.finalFeedback || 'Good Job!';
       let fbContent = '';
-      if(/^https?:\/\//i.test(fbVal)) {
-         fbContent = `<img src="${fbVal}" class="feedback-img">`;
-      } else {
-         fbContent = `<h2>${fbVal}</h2>`;
-      }
+      if(/^https?:\/\//i.test(fbVal)) fbContent = `<img src="${fbVal}" class="feedback-img">`;
+      else fbContent = `<h2>${fbVal}</h2>`;
 
       ov.innerHTML = `
         <div class="panel">
            ${fbContent}
            <h3 class="rank">${rankName}</h3>
-           
            <div class="stats-grid">
              <div class="stats-row"><span>✅ ${TXT.hits}</span> <b>${hits}</b></div>
              <div class="stats-row"><span>❌ ${TXT.wrong}</span> <b>${wrongClicks}</b></div>
              <div class="stats-row"><span>💨 ${TXT.missed}</span> <b>${missed}</b></div>
              <div class="stats-row"><span>🏆 ${TXT.total}</span> <b>${score}</b></div>
            </div>
-
            <button onclick="location.reload()">Replay</button>
         </div>`;
       document.body.appendChild(ov);
