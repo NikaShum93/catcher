@@ -9,8 +9,9 @@
     
     /* === БАЗА === */
     html,body{height:100%}
+    /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
-    #game{ position:relative; width:100%; height:100%; overflow:hidden; }
+    #game{ position:relative; width:100%; height:100%; overflow:hidden; cursor: none; /* Скрываем системный курсор над игрой */ }
 
     /* === HUD === */
     .hud{
@@ -30,6 +31,7 @@
       position: absolute; z-index: 100; pointer-events: none; display: none;
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
+    /* Зоны для тача на мобилках */
     .touch-zone { position: fixed; z-index: 5; }
 
     /* === ОВЕРЛЕИ === */
@@ -38,6 +40,7 @@
       background: transparent !important; 
       z-index:500;
       pointer-events: auto;
+      cursor: default;
     }
     .overlay .panel{
       background: rgba(20, 20, 20, 0.95); 
@@ -131,22 +134,21 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === БАЛАНС СКОРОСТИ И ПОЯВЛЕНИЯ ===
+    // === БАЛАНС (МАКСИМУМ 3 ПРЕДМЕТА, ПЛАВНАЯ СКОРОСТЬ) ===
+    const MAX_ITEMS = 3; 
+    
     function computeSpeedParams(S){
-      // S от 1 до 10 (сложность).
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
       
-      // Скорость: от 0.6 (плавно, не висит) до 3.0 (довольно быстро)
-      const vel = 0.6 + (3.0 - 0.6) * Math.pow(t, 1.4); 
+      // Скорость падения: плавная, без гонок
+      const vel = 0.5 + (2.5 - 0.5) * Math.pow(t, 1.2); 
       
-      // Частота проверки (REFILL RATE): 
-      // Проверяем часто (600мс - 1000мс), есть ли место на экране.
-      // Само ограничение количества делается в spawnLoop (if count < 3)
-      const spawnCheckRate = 1000 - (400 * t); 
+      // Мин. интервал между появлением (чтобы не слипались)
+      const minSpawnGap = 1000 - (500 * t); // 1.0сек -> 0.5сек
 
       const basePts = 5 + (50 - 5) * t;
-      return { vel, spawn: spawnCheckRate, basePts: Math.round(basePts) };
+      return { vel, minSpawnGap, basePts: Math.round(basePts) };
     }
     
     const I18N = {
@@ -170,13 +172,14 @@
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, spawn: 800, basePts: 20 };
+    let SPEED = { vel: 1.0, minSpawnGap: 1000, basePts: 20 };
     let IS_HORIZONTAL = false;
-    let spawnTimer = null;
-    let lastZone = -1;
     
-    // МАКСИМУМ ПРЕДМЕТОВ НА ЭКРАНЕ
-    const MAX_ITEMS = 3;
+    // --- ПЕРЕМЕННЫЕ ДЛЯ КОНВЕЙЕРА ---
+    let lastSpawnTime = 0;
+    let checkInterval = null; 
+    let lastZone = -1;
+    let spawnDeck = []; // Колода для анти-повторов
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -242,6 +245,29 @@
     }
 
     function setupControls(){
+      // === МЫШКА: ПРЯМОЕ УПРАВЛЕНИЕ (1:1) ===
+      const gameDiv = $('#game');
+      
+      gameDiv.onmousemove = e => {
+         if(!running) return;
+         const rect = gameDiv.getBoundingClientRect();
+         if(IS_HORIZONTAL) {
+             let y = e.clientY - rect.top;
+             // Ограничиваем, чтобы не вылетал
+             const h = playerNode.offsetHeight;
+             if(y < h/2) y = h/2;
+             if(y > rect.height - h/2) y = rect.height - h/2;
+             playerPos.y = y;
+         } else {
+             let x = e.clientX - rect.left;
+             const w = playerNode.offsetWidth;
+             if(x < w/2) x = w/2;
+             if(x > rect.width - w/2) x = rect.width - w/2;
+             playerPos.x = x;
+         }
+      };
+
+      // === КЛАВИАТУРА (ПЛАВНАЯ) ===
       window.onkeydown = e => { 
          if(IS_HORIZONTAL) {
             if(e.key==='ArrowUp') keys.neg=true; if(e.key==='ArrowDown') keys.pos=true;
@@ -256,40 +282,61 @@
             if(e.key==='ArrowLeft') keys.neg=false; if(e.key==='ArrowRight') keys.pos=false;
          }
       };
-      const gameDiv = $('#game');
-      const z1 = document.createElement('div'); z1.className='touch-zone';
-      const z2 = document.createElement('div'); z2.className='touch-zone';
-      if(IS_HORIZONTAL) {
-         z1.style.cssText = "top:0; left:0; right:0; height:50%"; z2.style.cssText = "bottom:0; left:0; right:0; height:50%";
-      } else {
-         z1.style.cssText = "top:0; left:0; bottom:0; width:50%"; z2.style.cssText = "top:0; right:0; bottom:0; width:50%";
-      }
-      const bind = (el, k) => {
-        el.ontouchstart = e => { e.preventDefault(); keys[k]=true; };
-        el.ontouchend = e => { e.preventDefault(); keys[k]=false; };
-        el.onmousedown = () => keys[k]=true; el.onmouseup = () => keys[k]=false; el.onmouseleave = () => keys[k]=false;
+      
+      // === ТАЧ (КАК МЫШКА) ===
+      gameDiv.ontouchmove = e => {
+         e.preventDefault();
+         if(!running) return;
+         const touch = e.touches[0];
+         const rect = gameDiv.getBoundingClientRect();
+         if(IS_HORIZONTAL) {
+             let y = touch.clientY - rect.top;
+             const h = playerNode.offsetHeight;
+             if(y < h/2) y = h/2;
+             if(y > rect.height - h/2) y = rect.height - h/2;
+             playerPos.y = y;
+         } else {
+             let x = touch.clientX - rect.left;
+             const w = playerNode.offsetWidth;
+             if(x < w/2) x = w/2;
+             if(x > rect.width - w/2) x = rect.width - w/2;
+             playerPos.x = x;
+         }
       };
-      bind(z1, 'neg'); bind(z2, 'pos');
-      gameDiv.appendChild(z1); gameDiv.appendChild(z2);
     }
 
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
-      if(keys.neg) playerPos.v -= 1.5; if(keys.pos) playerPos.v += 1.5;
-      playerPos.v *= 0.85;
-
-      if(IS_HORIZONTAL) {
-         playerPos.y += playerPos.v;
-         const h = playerNode.offsetHeight;
-         if(playerPos.y < h/2) { playerPos.y = h/2; playerPos.v=0; }
-         if(playerPos.y > window.innerHeight - h/2) { playerPos.y = window.innerHeight - h/2; playerPos.v=0; }
-         playerNode.style.top = playerPos.y + 'px'; playerNode.style.transform = 'translateY(-50%)'; 
+      
+      // Если нажаты кнопки, двигаем плавно. Если нет - оставляем позицию мыши.
+      if(keys.neg || keys.pos) {
+          if(keys.neg) playerPos.v -= 1.5; 
+          if(keys.pos) playerPos.v += 1.5;
+          playerPos.v *= 0.85; // Инерция только для клавиш
+          
+          if(IS_HORIZONTAL) {
+             playerPos.y += playerPos.v;
+          } else {
+             playerPos.x += playerPos.v;
+          }
       } else {
-         playerPos.x += playerPos.v;
+          // Если кнопки не нажаты, сбрасываем инерцию, чтобы мышь работала четко
+          playerPos.v = 0;
+      }
+
+      // Обновляем CSS (с учетом границ)
+      if(IS_HORIZONTAL) {
+         const h = playerNode.offsetHeight;
+         if(playerPos.y < h/2) playerPos.y = h/2;
+         if(playerPos.y > window.innerHeight - h/2) playerPos.y = window.innerHeight - h/2;
+         playerNode.style.top = playerPos.y + 'px'; 
+         playerNode.style.transform = 'translateY(-50%)'; 
+      } else {
          const w = playerNode.offsetWidth;
-         if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
-         if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
-         playerNode.style.left = playerPos.x + 'px'; playerNode.style.transform = 'translateX(-50%)'; 
+         if(playerPos.x < w/2) playerPos.x = w/2;
+         if(playerPos.x > window.innerWidth - w/2) playerPos.x = window.innerWidth - w/2;
+         playerNode.style.left = playerPos.x + 'px'; 
+         playerNode.style.transform = 'translateX(-50%)'; 
       }
       checkCollisions();
       requestAnimationFrame(loopPlayer);
@@ -304,8 +351,9 @@
     }
 
     function startLevel(){
-      if(spawnTimer) clearTimeout(spawnTimer); 
+      if(checkInterval) clearInterval(checkInterval);
       document.querySelectorAll('.item').forEach(e=>e.remove()); 
+      spawnDeck = []; // Сброс колоды
       
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
@@ -320,27 +368,50 @@
         time--;
         $('#hudTimer').textContent = time;
         if(time <= 0) {
-          clearInterval(timer); clearTimeout(spawnTimer); 
+          clearInterval(timer); 
+          if(checkInterval) clearInterval(checkInterval);
           document.querySelectorAll('.item').forEach(e=>e.remove());
           showLevelComplete();
         }
       }, 1000);
-      spawnLoop(lv);
+      
+      startSpawnerLoop(lv);
     }
 
-    function spawnLoop(lv){
-      const pool = [...lv.correct.map(v=>({v,g:true})), ...lv.wrong.map(v=>({v,g:false}))];
-      
-      const next = () => {
-         if(!running) return;
-         // ЖЕСТКИЙ ЛИМИТ: НЕ БОЛЕЕ 3 ШТУК ОДНОВРЕМЕННО
-         if(document.querySelectorAll('.item').length < MAX_ITEMS) {
-            drop(pool[Math.floor(Math.random()*pool.length)]);
-         }
-         // ПРОВЕРЯЕМ СКОРО (ЗАВИСИТ ОТ СКОРОСТИ, НО БЫСТРО), ЧТОБЫ ЗАПОЛНИТЬ ПУСТОТУ
-         spawnTimer = setTimeout(next, SPEED.spawn);
-      };
-      next();
+    // === КОНВЕЙЕР (БЕЗ ПАУЗ) ===
+    function startSpawnerLoop(lv){
+        const correct = lv.correct.map(v=>({v,g:true}));
+        const wrong = lv.wrong.map(v=>({v,g:false}));
+        const fullPool = [...correct, ...wrong];
+        
+        // Запускаем проверку каждые 200мс
+        checkInterval = setInterval(() => {
+            if(!running) return;
+            const items = document.querySelectorAll('.item');
+            const now = Date.now();
+            
+            // Если на экране меньше максимума И прошло достаточно времени с последнего спавна
+            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.minSpawnGap)) {
+                spawnOne(fullPool);
+                lastSpawnTime = now;
+            }
+        }, 200);
+    }
+
+    // === КОЛОДА (АНТИ-ПОВТОРЫ) ===
+    function spawnOne(pool){
+        if(spawnDeck.length === 0) {
+            // Создаем новую перемешанную колоду индексов
+            spawnDeck = pool.map((_, i) => i);
+            // Тасование Фишера-Йейтса
+            for (let i = spawnDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [spawnDeck[i], spawnDeck[j]] = [spawnDeck[j], spawnDeck[i]];
+            }
+        }
+        // Берем следующий индекс
+        const idx = spawnDeck.pop();
+        drop(pool[idx]);
     }
 
     function drop(data){
@@ -413,7 +484,7 @@
       if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === РАСЧЕТ РАЗМЕРОВ ===
+    // === РАЗМЕРЫ ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
@@ -422,12 +493,10 @@
        const r = content.getBoundingClientRect();
        const PAD = Number(STYLE.pad || 22);
 
-       // 1. Ширина с учетом паддингов
-       // Уменьшил множитель паддинга, чтобы не были такими огромными
        let wNeeded = Math.ceil(r.width + PAD); 
        let hNeeded = Math.ceil(r.height + 10);
 
-       // 2. Квадрат, чтобы не плющило
+       // Квадрат, чтобы не сплющивало картинку
        const size = Math.max(wNeeded, hNeeded);
        
        el.style.width = size + 'px';
@@ -463,7 +532,6 @@
           else x = -250; 
           
       } else {
-          // ДЕЛИМ НА 4 ВЕРТИКАЛЬНЫЕ КОЛОНКИ
           const zones = 4;
           const W = window.innerWidth;
           const zoneW = (W - 40) / zones; 
