@@ -7,13 +7,12 @@
   <style>
     :root{ --ui: #ffd700; --glow: #00f0ff; }
     
-    /* === БАЗА === */
     html,body{height:100%}
-    /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
+    /* ФОН - ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
-    #game{ position:relative; width:100%; height:100%; overflow:hidden; cursor: none; /* Скрываем системный курсор над игрой */ }
+    #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
-    /* === HUD === */
+    /* HUD */
     .hud{
       position:fixed; left:12px; top:12px; right:12px; display:none; 
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
@@ -26,21 +25,25 @@
     }
     .levelTitle{ color: var(--ui); max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* === ИГРОК === */
+    /* ИГРОК */
     #player {
       position: absolute; z-index: 100; pointer-events: none; display: none;
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
-    /* Зоны для тача на мобилках */
-    .touch-zone { position: fixed; z-index: 5; }
+    
+    /* ЗОНЫ УПРАВЛЕНИЯ (ДЛЯ МЫШИ И ТАЧА) */
+    .control-zone {
+      position: fixed; top: 0; bottom: 0; z-index: 50; cursor: pointer;
+      /* background: rgba(255,0,0,0.1); Для отладки, потом убрать */
+    }
+    #zone-neg { left: 0; width: 50%; }
+    #zone-pos { right: 0; width: 50%; }
 
-    /* === ОВЕРЛЕИ === */
+    /* ОВЕРЛЕИ */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
       background: transparent !important; 
-      z-index:500;
-      pointer-events: auto;
-      cursor: default;
+      z-index:500; pointer-events: auto;
     }
     .overlay .panel{
       background: rgba(20, 20, 20, 0.95); 
@@ -70,41 +73,29 @@
     }
     .overlay button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5); background: #ffea00; }
 
-    /* === ПАДАЮЩИЕ ЭЛЕМЕНТЫ === */
+    /* ПРЕДМЕТЫ */
     .item{
       position:absolute; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
       padding:0; user-select:none; cursor:pointer; z-index: 10;
-      box-sizing: border-box; 
-      white-space: nowrap; 
+      box-sizing: border-box; white-space: nowrap; 
     }
-    
     .item .bg{
-      position:absolute; inset:0;
-      background: transparent; opacity:1;
-      border:0 solid #fff; box-shadow:none;
-      transition:filter .15s ease;
-      background-position:center !important;
-      background-repeat:no-repeat !important;
+      position:absolute; inset:0; background: transparent; opacity:1;
+      border:0 solid #fff; box-shadow:none; transition:filter .15s ease;
+      background-position:center !important; background-repeat:no-repeat !important;
       background-size: contain !important; 
     }
-    
     .item .content{
-      position:relative; z-index:1;
-      display:flex; align-items:center; justify-content:center;
-      text-align:center; line-height:1.15;
-      width: 100%; height: 100%;
+      position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+      text-align:center; line-height:1.15; width: 100%; height: 100%;
     }
-    
     .item .content span{ display:inline-block; font-weight:800; }
     .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
 
-    /* Формы */
     .shape-rect .bg { border-radius:10px }
     .shape-rounded .bg { border-radius:20px }
     .shape-circle .bg { border-radius:50% }
-    
-    /* Эффекты */
     .fx-shadow .bg{ box-shadow:0 10px 30px rgba(0,0,0,.55) }
     .fx-glow .bg{ box-shadow:0 0 18px var(--glow, #00f0ff), 0 0 28px rgba(0,0,0,.25) }
     
@@ -113,7 +104,6 @@
       text-shadow: 1px 1px 0 #000; animation:floatUp .8s ease-out forwards; pointer-events:none;
     }
     @keyframes floatUp{ 0%{ transform:translate(-50%,0); opacity:1 } 100%{ transform:translate(-50%,-60px); opacity:0 } }
-    
     .caught{ transform: scale(1.1); opacity: 0; transition: all 0.2s; }
     .tint-red .bg { filter: hue-rotate(-25deg) saturate(3) brightness(1.2); }
     .firework { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 999; }
@@ -125,7 +115,11 @@
     <div class="badge timer" id="hudTimer">00</div>
     <div class="badge score" id="hudScore">0</div>
   </div>
-  <div id="game"></div>
+  
+  <div id="game">
+    <div id="zone-neg" class="control-zone"></div>
+    <div id="zone-pos" class="control-zone"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
@@ -134,21 +128,24 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === БАЛАНС (МАКСИМУМ 3 ПРЕДМЕТА, ПЛАВНАЯ СКОРОСТЬ) ===
-    const MAX_ITEMS = 3; 
+    // === БАЛАНС ИГРЫ ===
+    const MAX_ITEMS = 3; // Максимум на экране
     
     function computeSpeedParams(S){
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
       
-      // Скорость падения: плавная, без гонок
-      const vel = 0.5 + (2.5 - 0.5) * Math.pow(t, 1.2); 
+      // Скорость падения: от 0.6 до 2.5 (равномерная)
+      const vel = 0.6 + (2.5 - 0.6) * Math.pow(t, 1.2); 
       
-      // Мин. интервал между появлением (чтобы не слипались)
-      const minSpawnGap = 1000 - (500 * t); // 1.0сек -> 0.5сек
+      // ИНТЕРВАЛ (РИТМ):
+      // На 1 уровне: падает раз в 1.5 сек
+      // На 10 уровне: падает раз в 0.8 сек
+      // Это создает ритм и не дает им слипаться
+      const spawnRate = 1500 - (700 * t); 
 
       const basePts = 5 + (50 - 5) * t;
-      return { vel, minSpawnGap, basePts: Math.round(basePts) };
+      return { vel, spawnRate, basePts: Math.round(basePts) };
     }
     
     const I18N = {
@@ -172,14 +169,13 @@
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, minSpawnGap: 1000, basePts: 20 };
+    let SPEED = { vel: 1.0, spawnRate: 1000, basePts: 20 };
     let IS_HORIZONTAL = false;
     
-    // --- ПЕРЕМЕННЫЕ ДЛЯ КОНВЕЙЕРА ---
+    // Переменные спавнера
     let lastSpawnTime = 0;
-    let checkInterval = null; 
+    let spawnDeck = []; 
     let lastZone = -1;
-    let spawnDeck = []; // Колода для анти-повторов
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -231,6 +227,9 @@
          } else {
             playerNode.style.right = '20px'; playerNode.style.top = '50%';
          }
+         // Поворачиваем зоны для горизонтали
+         $('#zone-neg').style.cssText = "top:0; bottom:50%; left:0; right:0; width:100%";
+         $('#zone-pos').style.cssText = "top:50%; bottom:0; left:0; right:0; width:100%";
       } else {
          playerPos.x = window.innerWidth / 2;
          if(dir === 'down') {
@@ -245,29 +244,22 @@
     }
 
     function setupControls(){
-      // === МЫШКА: ПРЯМОЕ УПРАВЛЕНИЕ (1:1) ===
-      const gameDiv = $('#game');
-      
-      gameDiv.onmousemove = e => {
-         if(!running) return;
-         const rect = gameDiv.getBoundingClientRect();
-         if(IS_HORIZONTAL) {
-             let y = e.clientY - rect.top;
-             // Ограничиваем, чтобы не вылетал
-             const h = playerNode.offsetHeight;
-             if(y < h/2) y = h/2;
-             if(y > rect.height - h/2) y = rect.height - h/2;
-             playerPos.y = y;
-         } else {
-             let x = e.clientX - rect.left;
-             const w = playerNode.offsetWidth;
-             if(x < w/2) x = w/2;
-             if(x > rect.width - w/2) x = rect.width - w/2;
-             playerPos.x = x;
-         }
+      // === УПРАВЛЕНИЕ ПО КЛИКУ/ТАЧУ НА ПОЛОВИНЫ ЭКРАНА ===
+      const zNeg = $('#zone-neg');
+      const zPos = $('#zone-pos');
+
+      const bind = (el, k) => {
+         el.onmousedown = () => keys[k] = true;
+         el.onmouseup = () => keys[k] = false;
+         el.onmouseleave = () => keys[k] = false;
+         el.ontouchstart = (e) => { e.preventDefault(); keys[k] = true; };
+         el.ontouchend = (e) => { e.preventDefault(); keys[k] = false; };
       };
 
-      // === КЛАВИАТУРА (ПЛАВНАЯ) ===
+      bind(zNeg, 'neg');
+      bind(zPos, 'pos');
+
+      // КЛАВИАТУРА ТОЖЕ РАБОТАЕТ
       window.onkeydown = e => { 
          if(IS_HORIZONTAL) {
             if(e.key==='ArrowUp') keys.neg=true; if(e.key==='ArrowDown') keys.pos=true;
@@ -282,59 +274,28 @@
             if(e.key==='ArrowLeft') keys.neg=false; if(e.key==='ArrowRight') keys.pos=false;
          }
       };
-      
-      // === ТАЧ (КАК МЫШКА) ===
-      gameDiv.ontouchmove = e => {
-         e.preventDefault();
-         if(!running) return;
-         const touch = e.touches[0];
-         const rect = gameDiv.getBoundingClientRect();
-         if(IS_HORIZONTAL) {
-             let y = touch.clientY - rect.top;
-             const h = playerNode.offsetHeight;
-             if(y < h/2) y = h/2;
-             if(y > rect.height - h/2) y = rect.height - h/2;
-             playerPos.y = y;
-         } else {
-             let x = touch.clientX - rect.left;
-             const w = playerNode.offsetWidth;
-             if(x < w/2) x = w/2;
-             if(x > rect.width - w/2) x = rect.width - w/2;
-             playerPos.x = x;
-         }
-      };
     }
 
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
       
-      // Если нажаты кнопки, двигаем плавно. Если нет - оставляем позицию мыши.
-      if(keys.neg || keys.pos) {
-          if(keys.neg) playerPos.v -= 1.5; 
-          if(keys.pos) playerPos.v += 1.5;
-          playerPos.v *= 0.85; // Инерция только для клавиш
-          
-          if(IS_HORIZONTAL) {
-             playerPos.y += playerPos.v;
-          } else {
-             playerPos.x += playerPos.v;
-          }
-      } else {
-          // Если кнопки не нажаты, сбрасываем инерцию, чтобы мышь работала четко
-          playerPos.v = 0;
-      }
+      // Плавное движение с инерцией
+      if(keys.neg) playerPos.v -= 1.2; 
+      if(keys.pos) playerPos.v += 1.2;
+      playerPos.v *= 0.88; // Трение
 
-      // Обновляем CSS (с учетом границ)
       if(IS_HORIZONTAL) {
+         playerPos.y += playerPos.v;
          const h = playerNode.offsetHeight;
-         if(playerPos.y < h/2) playerPos.y = h/2;
-         if(playerPos.y > window.innerHeight - h/2) playerPos.y = window.innerHeight - h/2;
+         if(playerPos.y < h/2) { playerPos.y = h/2; playerPos.v=0; }
+         if(playerPos.y > window.innerHeight - h/2) { playerPos.y = window.innerHeight - h/2; playerPos.v=0; }
          playerNode.style.top = playerPos.y + 'px'; 
          playerNode.style.transform = 'translateY(-50%)'; 
       } else {
+         playerPos.x += playerPos.v;
          const w = playerNode.offsetWidth;
-         if(playerPos.x < w/2) playerPos.x = w/2;
-         if(playerPos.x > window.innerWidth - w/2) playerPos.x = window.innerWidth - w/2;
+         if(playerPos.x < w/2) { playerPos.x = w/2; playerPos.v=0; }
+         if(playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v=0; }
          playerNode.style.left = playerPos.x + 'px'; 
          playerNode.style.transform = 'translateX(-50%)'; 
       }
@@ -351,9 +312,8 @@
     }
 
     function startLevel(){
-      if(checkInterval) clearInterval(checkInterval);
       document.querySelectorAll('.item').forEach(e=>e.remove()); 
-      spawnDeck = []; // Сброс колоды
+      spawnDeck = []; 
       
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
@@ -369,47 +329,50 @@
         $('#hudTimer').textContent = time;
         if(time <= 0) {
           clearInterval(timer); 
-          if(checkInterval) clearInterval(checkInterval);
           document.querySelectorAll('.item').forEach(e=>e.remove());
           showLevelComplete();
         }
       }, 1000);
       
-      startSpawnerLoop(lv);
+      // ЗАПУСК ИГРОВОГО ЦИКЛА СПАВНА
+      gameLogicLoop(lv);
     }
 
-    // === КОНВЕЙЕР (БЕЗ ПАУЗ) ===
-    function startSpawnerLoop(lv){
+    // === ЛОГИКА СПАВНА: МЕТРОНОМ ===
+    function gameLogicLoop(lv){
         const correct = lv.correct.map(v=>({v,g:true}));
         const wrong = lv.wrong.map(v=>({v,g:false}));
         const fullPool = [...correct, ...wrong];
         
-        // Запускаем проверку каждые 200мс
-        checkInterval = setInterval(() => {
+        lastSpawnTime = Date.now();
+
+        const tick = () => {
             if(!running) return;
-            const items = document.querySelectorAll('.item');
-            const now = Date.now();
             
-            // Если на экране меньше максимума И прошло достаточно времени с последнего спавна
-            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.minSpawnGap)) {
+            const now = Date.now();
+            const items = document.querySelectorAll('.item');
+            
+            // 1. Проверяем лимит (не больше 3)
+            // 2. Проверяем таймер (прошло ли время с прошлого спавна)
+            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.spawnRate)) {
                 spawnOne(fullPool);
                 lastSpawnTime = now;
             }
-        }, 200);
+            
+            requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
     }
 
-    // === КОЛОДА (АНТИ-ПОВТОРЫ) ===
     function spawnOne(pool){
         if(spawnDeck.length === 0) {
-            // Создаем новую перемешанную колоду индексов
             spawnDeck = pool.map((_, i) => i);
-            // Тасование Фишера-Йейтса
+            // Перемешиваем колоду
             for (let i = spawnDeck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [spawnDeck[i], spawnDeck[j]] = [spawnDeck[j], spawnDeck[i]];
             }
         }
-        // Берем следующий индекс
         const idx = spawnDeck.pop();
         drop(pool[idx]);
     }
@@ -456,11 +419,7 @@
          con.style.setProperty('--ch', IMG_BOX + 'px');
       } else {
          const span = document.createElement('span');
-         if(cfg.language==='math') { 
-             span.textContent = `\\(${data.v}\\)`; 
-         } else {
-             span.textContent = data.v;
-         }
+         if(cfg.language==='math') { span.textContent = `\\(${data.v}\\)`; } else { span.textContent = data.v; }
          span.style.color = TEXT_COLOR;
          span.style.fontSize = `${FONT_SIZE}px`;
          span.style.fontFamily = FONT;
@@ -471,20 +430,14 @@
       $('#game').appendChild(el);
       
       if(cfg.language==='math') {
-          MathJax.typesetPromise([el]).then(() => {
-             fitGeometryBox(el, STYLE);
-             setStartPosition(el);
-          });
+          MathJax.typesetPromise([el]).then(() => { fitGeometryBox(el, STYLE); setStartPosition(el); });
       } else {
-         fitGeometryBox(el, STYLE);
-         setStartPosition(el);
+         fitGeometryBox(el, STYLE); setStartPosition(el);
       }
       
       startFalling(el);
-      if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === РАЗМЕРЫ ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
@@ -495,65 +448,49 @@
 
        let wNeeded = Math.ceil(r.width + PAD); 
        let hNeeded = Math.ceil(r.height + 10);
-
-       // Квадрат, чтобы не сплющивало картинку
        const size = Math.max(wNeeded, hNeeded);
        
        el.style.width = size + 'px';
        el.style.height = size + 'px';
     }
 
-    // === ЗОНЫ ===
     function setStartPosition(el) {
       const dir = cfg.direction || 'down';
       const elW = el.offsetWidth || 100;
       const elH = el.offsetHeight || 80;
-      
       let x, y;
 
       if (IS_HORIZONTAL) {
           const zones = 3;
           const H = window.innerHeight;
           const zoneH = (H - 100) / zones; 
-          
           let z;
           let tries = 0;
-          do {
-             z = Math.floor(Math.random() * zones);
-             tries++;
-          } while(z === lastZone && tries < 5);
+          do { z = Math.floor(Math.random() * zones); tries++; } while(z === lastZone && tries < 5);
           lastZone = z;
           
           const minY = 50 + (z * zoneH);
           const maxY = 50 + ((z+1) * zoneH) - elH;
           y = minY + Math.random() * (maxY - minY);
           
-          if(dir === 'left') x = (window.innerWidth + 100); 
-          else x = -250; 
+          if(dir === 'left') x = (window.innerWidth + 100); else x = -250; 
           
       } else {
           const zones = 4;
           const W = window.innerWidth;
           const zoneW = (W - 40) / zones; 
-          
           let z;
           let tries = 0;
-          do {
-             z = Math.floor(Math.random() * zones);
-             tries++;
-          } while(z === lastZone && tries < 5);
+          do { z = Math.floor(Math.random() * zones); tries++; } while(z === lastZone && tries < 5);
           lastZone = z;
           
           const minX = 20 + (z * zoneW);
           const maxX = 20 + ((z+1) * zoneW) - elW;
           x = minX + Math.random() * (maxX - minX);
           
-          if(dir === 'down') y = -250;
-          else y = (window.innerHeight + 50);
+          if(dir === 'down') y = -250; else y = (window.innerHeight + 50);
       }
-      
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
+      el.style.left = x + 'px'; el.style.top = y + 'px';
     }
 
     function startFalling(el) {
