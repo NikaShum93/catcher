@@ -119,23 +119,24 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === БАЛАНС (ЗОЛОТАЯ СЕРЕДИНА) ===
-    const MAX_ITEMS = 3; 
+    // === НАСТРОЙКИ ПОТОКА ===
+    // Лимит технический (чтобы браузер не умер), но по факту поток бесконечный
+    const SAFETY_CAP = 12; 
     
     function computeSpeedParams(S){
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
       
-      // Скорость: 0.8 (чуть бодрее 0.5) ... 3.0
+      // Скорость (px/frame): 0.8 ... 3.0
       const vel = 0.8 + (3.0 - 0.8) * Math.pow(t, 1.2); 
       
-      // Интервал: 1200мс (1.2 сек) ... 600мс
-      // Это создает "окно" между предметами, они не идут впритык, 
-      // но и не "один на слайд".
-      const minSpawnGap = 1200 - (600 * t); 
+      // Интервал спавна (мс): 1500 ... 700
+      // Это время между вылетом предметов. 
+      // 1.5 сек на 1 уровне дает хороший отступ.
+      const spawnRate = 1500 - (800 * t); 
 
       const basePts = 5 + (50 - 5) * t;
-      return { vel, minSpawnGap, basePts: Math.round(basePts) };
+      return { vel, spawnRate, basePts: Math.round(basePts) };
     }
     
     const I18N = {
@@ -157,15 +158,16 @@
     
     let cfg = null;
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
-    // Для мыши
+    // Мышь
     let mouseTarget = null; 
     let isMouseDown = false;
 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, minSpawnGap: 1200, basePts: 20 };
+    let SPEED = { vel: 1.0, spawnRate: 1500, basePts: 20 };
     let IS_HORIZONTAL = false;
     
+    // Спавнер
     let lastSpawnTime = 0;
     let checkInterval = null; 
     let lastZone = -1;
@@ -285,7 +287,7 @@
       if (isMouseDown && mouseTarget !== null) {
           const pVal = IS_HORIZONTAL ? playerPos.y : playerPos.x;
           const diff = mouseTarget - pVal;
-          if (Math.abs(diff) > 10) { // Deadzone
+          if (Math.abs(diff) > 10) { 
               moveV += Math.sign(diff) * 1.5; 
           }
       }
@@ -348,6 +350,7 @@
       startSpawnerLoop(lv);
     }
 
+    // === БЕСКОНЕЧНЫЙ ПОТОК (LOOP) ===
     function startSpawnerLoop(lv){
         const correct = lv.correct.map(v=>({v,g:true}));
         const wrong = lv.wrong.map(v=>({v,g:false}));
@@ -355,17 +358,19 @@
         
         lastSpawnTime = Date.now();
 
+        // Проверяем каждую долю секунды
         checkInterval = setInterval(() => {
             if(!running) return;
             const items = document.querySelectorAll('.item');
             const now = Date.now();
             
-            // ЛИМИТ: 3 ПРЕДМЕТА. ИНТЕРВАЛ: minSpawnGap (1.2 сек)
-            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.minSpawnGap)) {
+            // Если прошло время (spawnRate) И мы не превысили тех. лимит
+            // spawnRate гарантирует равномерность
+            if(items.length < SAFETY_CAP && (now - lastSpawnTime > SPEED.spawnRate)) {
                 spawnOne(fullPool);
                 lastSpawnTime = now;
             }
-        }, 200);
+        }, 100);
     }
 
     function spawnOne(pool){
