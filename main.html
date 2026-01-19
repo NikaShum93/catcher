@@ -7,39 +7,41 @@
   <style>
     :root{ --ui: #ffd700; --glow: #00f0ff; --ui-soft: rgba(255,215,0,.14); }
     
-    /* === БАЗА - ПРОЗРАЧНЫЙ ФОН === */
+    /* === БАЗА === */
     html,body{height:100%}
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
     #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
-    /* === HUD === */
+    /* === HUD (СКРЫТ ПО УМОЛЧАНИЮ) === */
     .hud{
-      position:fixed; left:12px; top:12px; right:12px; display:flex; gap:12px; 
+      position:fixed; left:12px; top:12px; right:12px; display:none; /* Скрыт до старта */
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
+      gap:12px;
     }
     .badge{
-      background: rgba(17, 17, 17, 0.7); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      background: rgba(17, 17, 17, 0.85); /* Более плотный фон для читаемости */
       border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 8px 16px; 
       color: #fff; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .levelTitle{ color: var(--ui); max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* === ИГРОК === */
+    /* === ИГРОК (СКРЫТ ПО УМОЛЧАНИЮ) === */
     #player {
-      position: absolute; z-index: 100; pointer-events: none; 
+      position: absolute; z-index: 100; pointer-events: none; display: none; /* Скрыт до старта */
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
     .touch-zone { position: fixed; z-index: 5; }
 
-    /* === ОВЕРЛЕИ (СТЕКЛО) === */
+    /* === ОВЕРЛЕИ (БЕЗ РАЗМЫТИЯ, ПРОСТО ТЕМНЫЕ) === */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
-      background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index:500;
+      background: rgba(0,0,0,0.85); /* Просто темный фон, без блюра */
+      z-index:500;
     }
     .overlay .panel{
-      background: rgba(30, 30, 30, 0.65); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: #1a1a1a; 
       border: 1px solid rgba(255, 255, 255, 0.15); color:#fff; border-radius:24px;
-      padding:40px; text-align:center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      padding:40px; text-align:center; box-shadow: 0 20px 50px rgba(0,0,0,0.7);
       max-width: 480px; width: 90%; position: relative; z-index: 501; max-height: 90vh; overflow-y: auto;
     }
     .overlay h2{ margin:0 0 10px; font-size:32px; color:var(--ui); text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
@@ -52,7 +54,7 @@
 
     .stats-grid {
       display: grid; grid-template-columns: 1fr; gap: 8px;
-      background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 15px; border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 25px; font-size: 15px; border: 1px solid rgba(255,255,255,0.05);
     }
     .stats-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
     .stats-row:last-child { border-bottom: none; padding-bottom: 0; margin-top: 5px; font-size: 18px; color: var(--ui); font-weight: bold; }
@@ -64,13 +66,12 @@
     }
     .overlay button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5); background: #ffea00; }
 
-    /* === ПАДАЮЩИЕ ЭЛЕМЕНТЫ (СТИЛИ ИЗ ТВОЕГО ПРИМЕРА) === */
+    /* === ПАДАЮЩИЕ ЭЛЕМЕНТЫ === */
     .item{
       position:absolute; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
-      /* Мин размеры, но реальный размер задаст JS через fitGeometryBox */
-      min-width:120px; min-height:80px; 
       padding:0; user-select:none; cursor:pointer; z-index: 10;
+      box-sizing: border-box; /* Важно для паддингов */
     }
     
     .item .bg{
@@ -78,7 +79,6 @@
       background: transparent; opacity:1;
       border:0 solid #fff; box-shadow:none;
       transition:filter .15s ease;
-      /* ГЛАВНОЕ: картинка всегда вписывается */
       background-position:center !important;
       background-repeat:no-repeat !important;
       background-size: contain !important; 
@@ -89,9 +89,10 @@
       display:flex; align-items:center; justify-content:center;
       text-align:center; line-height:1.15;
       width: var(--cw, auto); height: var(--ch, auto);
+      white-space: nowrap; /* Текст не переносится, чтобы корректно считать ширину */
     }
     
-    .item .content span{ display:inline-block; font-weight:800; white-space:nowrap; }
+    .item .content span{ display:inline-block; font-weight:800; }
     .item .content img{ width:100%; height:100%; object-fit:contain; pointer-events:none; }
 
     /* Формы */
@@ -165,6 +166,8 @@
     let SPEED = { vel: 1.5, spawn: 1000, basePts: 20 };
     let IS_HORIZONTAL = false;
     let spawnTimer = null;
+    // Для системы анти-кучкования
+    let lastZone = -1;
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -188,8 +191,6 @@
         document.head.appendChild(link);
       }
       if(cfg.style?.glowColor) document.documentElement.style.setProperty('--glow', cfg.style.glowColor);
-      
-      // setupBackground удален, чтобы фон был всегда прозрачным
       
       setupPlayer();
       
@@ -288,6 +289,10 @@
     function startGame(){
       score=0; hits=0; wrongClicks=0; missed=0; currentLevel=0; running=true;
       $('#hudScore').textContent = '0';
+      // ПОКАЗЫВАЕМ ИНТЕРФЕЙС ТОЛЬКО СЕЙЧАС
+      $('.hud').style.display = 'flex';
+      if(playerNode) playerNode.style.display = 'block';
+      
       startLevel();
     }
 
@@ -326,28 +331,23 @@
       next();
     }
 
-    // === НОВАЯ ФУНКЦИЯ DROP (КАК В FALLING ITEMS) ===
     function drop(data){
       const STYLE = cfg.style || {};
       const FONT = cfg.font || 'sans-serif';
       const FONT_SIZE = Number(cfg.fontSize || 24);
       const TEXT_COLOR = cfg.textColor || '#ffffff';
       
-      // 1. Создаем контейнер
       const el = document.createElement('div');
       el.className = `item shape-${STYLE.shape || 'rounded'} ${STYLE.shadow?'fx-shadow':''} ${STYLE.fx3d?'fx-3d':''} ${STYLE.glow?'fx-glow':''}`;
       el.dataset.good = data.g;
       
-      // 2. Фон (фрукт)
       const bg = document.createElement('div');
       bg.className = 'bg';
       
-      // Выбираем картинку или цвет
       if(STYLE.bgImages && STYLE.bgImages.length) {
          const pick = STYLE.bgImages[Math.floor(Math.random()*STYLE.bgImages.length)];
          bg.style.backgroundImage = `url(${pick})`;
       } else if(STYLE.bgImage) {
-         // Поддержка строки с разделителями, как в Falling Items
          const list = String(STYLE.bgImage).split(/[\n\r,|;]+/).map(s=>s.trim()).filter(Boolean);
          if(list.length) bg.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`;
       } else if(STYLE.bgColor) {
@@ -357,25 +357,22 @@
       bg.style.opacity = STYLE.opacity || 1;
       if(STYLE.borderOn) bg.style.border = `2px solid ${STYLE.borderColor}`;
 
-      // 3. Контент (текст или картинка внутри)
       const con = document.createElement('div');
       con.className = 'content';
       
       // ПАДДИНГИ ИЗ КОНФИГА
       const PAD = Number(STYLE.pad || 22);
-      con.style.padding = PAD + 'px';
+      con.style.padding = `6px ${PAD}px`; // Вертикальный паддинг поменьше, горизонтальный из конфига
       
       const IMG_BOX = Number(STYLE.imgBox || 160);
 
       if(/^https?:\/\//i.test(data.v)){
-         // Если это картинка внутри
          const img = document.createElement('img');
          img.src = data.v;
          con.appendChild(img);
          con.style.setProperty('--cw', IMG_BOX + 'px');
          con.style.setProperty('--ch', IMG_BOX + 'px');
       } else {
-         // Если это текст
          const span = document.createElement('span');
          if(cfg.language==='math') { 
              span.textContent = `\\(${data.v}\\)`; 
@@ -389,48 +386,44 @@
       }
       
       el.appendChild(bg); el.appendChild(con);
-      
-      // Добавляем в игру, чтобы измерить
       $('#game').appendChild(el);
       
-      // MathJax рендер, если нужен
+      // Сначала подгоняем размер, потом ставим позицию (чтобы знать ширину для рандома)
       if(cfg.language==='math') {
           MathJax.typesetPromise([el]).then(() => {
              fitGeometryBox(el, STYLE);
              setStartPosition(el);
           });
       } else {
-         // 4. ГЛАВНОЕ: РАСТЯГИВАЕМ ФРУКТ ПОД ТЕКСТ
          fitGeometryBox(el, STYLE);
          setStartPosition(el);
       }
       
-      // 5. Запуск падения
       startFalling(el);
-      
       if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === ФУНКЦИЯ ПОДГОНА РАЗМЕРА КОНТЕЙНЕРА ПОД СОДЕРЖИМОЕ ===
+    // === 2. ИСПРАВЛЕННЫЙ РАСЧЕТ РАЗМЕРОВ (УЧИТЫВАЕТ ПАДДИНГИ) ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
        
-       // Сбрасываем размеры
        el.style.width = ''; el.style.height='';
        
        const r = content.getBoundingClientRect();
        
-       // Определяем паддинги рамки (если есть картинка, нужно больше места)
+       // Определяем паддинги рамки. Если есть картинка-фон, добавляем запас
        const hasImg = (STYLE.bgImages && STYLE.bgImages.length) || (STYLE.bgImage && STYLE.bgImage.length);
-       const padX = hasImg ? 30 : 22;
-       const padY = hasImg ? 24 : 18;
        
-       let W = Math.ceil(r.width + padX); // + паддинги
-       let H = Math.ceil(r.height + padY);
+       // ВАЖНО: Мы берем ширину контента и ДОБАВЛЯЕМ отступы СНАРУЖИ, чтобы текст не прилипал
+       // Ширина текста + паддинги конфига * 2
+       const PAD = Number(STYLE.pad || 22);
+       let W = Math.ceil(r.width + (PAD * 0.5)); 
+       
+       // Если это картинка, используем фиксированную высоту, иначе высоту текста
+       let H = Math.ceil(r.height);
 
        const shape = STYLE.shape || 'rounded';
-       // Если форма круглая/квадратная - делаем равносторонним по большей стороне
        if (shape === 'circle' || shape === 'diamond' || shape === 'star'){
            const S = Math.max(W, H);
            W = H = Math.ceil(S + 10);
@@ -440,17 +433,61 @@
        el.style.height = H + 'px';
     }
 
+    // === 3. СИСТЕМА ЗОН (АНТИ-КУЧКОВАНИЕ) ===
     function setStartPosition(el) {
       const dir = cfg.direction || 'down';
-      if(IS_HORIZONTAL) {
-         el.style.top = rnd(60, window.innerHeight-60) + 'px';
-         if(dir === 'left') el.style.left = (window.innerWidth + 100) + 'px'; 
-         else el.style.left = '-250px'; 
+      const elW = el.offsetWidth || 100;
+      const elH = el.offsetHeight || 80;
+      
+      let x, y;
+
+      if (IS_HORIZONTAL) {
+          // Горизонтальный режим - делим высоту на зоны
+          const zones = 3;
+          const H = window.innerHeight;
+          const zoneH = (H - 100) / zones; // 100px запас
+          
+          let z;
+          let tries = 0;
+          do {
+             z = Math.floor(Math.random() * zones);
+             tries++;
+          } while(z === lastZone && tries < 5);
+          lastZone = z;
+          
+          const minY = 50 + (z * zoneH);
+          const maxY = 50 + ((z+1) * zoneH) - elH;
+          
+          y = minY + Math.random() * (maxY - minY);
+          
+          if(dir === 'left') x = (window.innerWidth + 100); 
+          else x = -250; 
+          
       } else {
-         el.style.left = rnd(60, window.innerWidth-60) + 'px';
-         if(dir === 'down') el.style.top = '-250px';
-         else el.style.top = (window.innerHeight + 50) + 'px';
+          // Вертикальный режим - делим ширину на зоны
+          const zones = 4; // Больше зон для вертикали
+          const W = window.innerWidth;
+          const zoneW = (W - 40) / zones; // 40px запас
+          
+          let z;
+          let tries = 0;
+          do {
+             z = Math.floor(Math.random() * zones);
+             tries++;
+          } while(z === lastZone && tries < 5);
+          lastZone = z;
+          
+          const minX = 20 + (z * zoneW);
+          const maxX = 20 + ((z+1) * zoneW) - elW;
+          
+          x = minX + Math.random() * (maxX - minX);
+          
+          if(dir === 'down') y = -250;
+          else y = (window.innerHeight + 50);
       }
+      
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
     }
 
     function startFalling(el) {
@@ -477,10 +514,9 @@
            if(dir === 'down') y += speed; else y -= speed;
            
            let curX = parseFloat(el.style.left);
-           const elW = el.offsetWidth || 100;
            // Ограничение по краям при покачивании
            if(curX + sway < 10) el.style.left = (curX + (10 - (curX+sway))) + 'px';
-           else if (curX + sway > window.innerWidth - elW - 10) el.style.left = (curX - ((curX+sway) - (window.innerWidth - elW - 10))) + 'px';
+           else if (curX + sway > window.innerWidth - el.offsetWidth - 10) el.style.left = (curX - ((curX+sway) - (window.innerWidth - el.offsetWidth - 10))) + 'px';
            
            el.style.top = y + 'px';
            el.style.transform = `translateX(${sway}px)`;
