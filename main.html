@@ -10,7 +10,9 @@
     html,body{height:100%}
     /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
-    #game{ position:relative; width:100%; height:100%; overflow:hidden; cursor: crosshair; }
+    
+    /* КУРСОР ОБЫЧНЫЙ */
+    #game{ position:relative; width:100%; height:100%; overflow:hidden; cursor: default; }
 
     /* HUD */
     .hud{
@@ -35,7 +37,7 @@
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
       background: transparent !important; 
-      z-index:500; pointer-events: auto; cursor: default;
+      z-index:500; pointer-events: auto;
     }
     .overlay .panel{
       background: rgba(20, 20, 20, 0.95); 
@@ -117,16 +119,21 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === БАЛАНС ===
+    // === БАЛАНС (ЗОЛОТАЯ СЕРЕДИНА) ===
     const MAX_ITEMS = 3; 
     
     function computeSpeedParams(S){
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
-      // Скорость падения
-      const vel = 0.5 + (2.5 - 0.5) * Math.pow(t, 1.2); 
-      // Интервал появления
-      const minSpawnGap = 1000 - (500 * t); 
+      
+      // Скорость: 0.8 (чуть бодрее 0.5) ... 3.0
+      const vel = 0.8 + (3.0 - 0.8) * Math.pow(t, 1.2); 
+      
+      // Интервал: 1200мс (1.2 сек) ... 600мс
+      // Это создает "окно" между предметами, они не идут впритык, 
+      // но и не "один на слайд".
+      const minSpawnGap = 1200 - (600 * t); 
+
       const basePts = 5 + (50 - 5) * t;
       return { vel, minSpawnGap, basePts: Math.round(basePts) };
     }
@@ -150,21 +157,20 @@
     
     let cfg = null;
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
-    // Для мыши: цель движения и флаг нажатия
+    // Для мыши
     let mouseTarget = null; 
     let isMouseDown = false;
 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, minSpawnGap: 1000, basePts: 20 };
+    let SPEED = { vel: 1.0, minSpawnGap: 1200, basePts: 20 };
     let IS_HORIZONTAL = false;
     
-    // Переменные спавнера
     let lastSpawnTime = 0;
     let checkInterval = null; 
     let lastZone = -1;
     let spawnDeck = []; 
-    let bgImageDeck = []; // Колода для картинок (чтобы не повторялись)
+    let bgImageDeck = []; 
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -232,7 +238,6 @@
     function setupControls(){
       const gameDiv = $('#game');
       
-      // === ЛОГИКА: "КЛИКАЮ ЛЕВЕЕ - ЕДЕТ ВЛЕВО" ===
       const updateMouseTarget = (clientX, clientY) => {
           if(IS_HORIZONTAL) {
               const rect = gameDiv.getBoundingClientRect();
@@ -243,17 +248,14 @@
           }
       };
 
-      // Мышь
       gameDiv.onmousedown = e => { isMouseDown = true; updateMouseTarget(e.clientX, e.clientY); };
-      window.onmouseup = () => { isMouseDown = false; }; // Глобально, чтобы не залипало
+      window.onmouseup = () => { isMouseDown = false; };
       gameDiv.onmousemove = e => { if(isMouseDown) updateMouseTarget(e.clientX, e.clientY); };
 
-      // Тач
       gameDiv.ontouchstart = e => { e.preventDefault(); isMouseDown = true; updateMouseTarget(e.touches[0].clientX, e.touches[0].clientY); };
       gameDiv.ontouchend = e => { e.preventDefault(); isMouseDown = false; };
       gameDiv.ontouchmove = e => { e.preventDefault(); if(isMouseDown) updateMouseTarget(e.touches[0].clientX, e.touches[0].clientY); };
 
-      // Клавиатура
       window.onkeydown = e => { 
          if(IS_HORIZONTAL) {
             if(e.key==='ArrowUp') keys.neg=true; if(e.key==='ArrowDown') keys.pos=true;
@@ -273,27 +275,22 @@
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
       
-      // Сбрасываем скорость от мыши каждый кадр, накапливаем заново
       let moveV = 0;
 
-      // 1. Клавиатура (приоритет)
+      // КЛАВИАТУРА
       if(keys.neg) moveV -= 1.5; 
       if(keys.pos) moveV += 1.5;
 
-      // 2. Мышь / Тач (если нажаты)
+      // МЫШЬ (ОТНОСИТЕЛЬНО ЛОВЦА)
       if (isMouseDown && mouseTarget !== null) {
           const pVal = IS_HORIZONTAL ? playerPos.y : playerPos.x;
           const diff = mouseTarget - pVal;
-          
-          // Двигаемся в сторону клика с инерцией
-          // "Deadzone" 10px чтобы не дрожал на месте
-          if (Math.abs(diff) > 10) {
+          if (Math.abs(diff) > 10) { // Deadzone
               moveV += Math.sign(diff) * 1.5; 
           }
       }
 
-      // Применяем инерцию к общей скорости
-      playerPos.v = (playerPos.v * 0.85) + moveV; // 0.85 - плавность
+      playerPos.v = (playerPos.v * 0.85) + moveV; 
 
       if(IS_HORIZONTAL) {
          playerPos.y += playerPos.v;
@@ -326,7 +323,7 @@
       if(checkInterval) clearInterval(checkInterval);
       document.querySelectorAll('.item').forEach(e=>e.remove()); 
       spawnDeck = []; 
-      bgImageDeck = []; // Сброс колоды фонов
+      bgImageDeck = []; 
       
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
@@ -363,7 +360,7 @@
             const items = document.querySelectorAll('.item');
             const now = Date.now();
             
-            // Если место есть И время пришло
+            // ЛИМИТ: 3 ПРЕДМЕТА. ИНТЕРВАЛ: minSpawnGap (1.2 сек)
             if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.minSpawnGap)) {
                 spawnOne(fullPool);
                 lastSpawnTime = now;
@@ -372,7 +369,6 @@
     }
 
     function spawnOne(pool){
-        // Умная колода для слов
         if(spawnDeck.length === 0) {
             spawnDeck = pool.map((_, i) => i);
             for (let i = spawnDeck.length - 1; i > 0; i--) {
@@ -385,7 +381,6 @@
     }
 
     function getBgImage(STYLE) {
-        // Собираем доступные картинки
         let available = [];
         if(STYLE.bgImages && Array.isArray(STYLE.bgImages)) {
             available = STYLE.bgImages;
@@ -395,15 +390,13 @@
 
         if (available.length === 0) return null;
 
-        // Если колода пуста, заполняем и мешаем
         if (bgImageDeck.length === 0) {
-            bgImageDeck = [...available]; // Копируем
+            bgImageDeck = [...available]; 
             for (let i = bgImageDeck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [bgImageDeck[i], bgImageDeck[j]] = [bgImageDeck[j], bgImageDeck[i]];
             }
         }
-        // Возвращаем и удаляем из колоды
         return bgImageDeck.pop();
     }
 
@@ -420,7 +413,6 @@
       const bg = document.createElement('div');
       bg.className = 'bg';
       
-      // ИСПОЛЬЗУЕМ УМНУЮ КОЛОДУ ФОНОВ
       const bgUrl = getBgImage(STYLE);
       if(bgUrl) {
           bg.style.backgroundImage = `url(${bgUrl})`;
