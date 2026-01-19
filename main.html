@@ -8,9 +8,9 @@
     :root{ --ui: #ffd700; --glow: #00f0ff; }
     
     html,body{height:100%}
-    /* ФОН - ПРОЗРАЧНЫЙ */
+    /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
-    #game{ position:relative; width:100%; height:100%; overflow:hidden; }
+    #game{ position:relative; width:100%; height:100%; overflow:hidden; cursor: crosshair; }
 
     /* HUD */
     .hud{
@@ -31,19 +31,11 @@
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
     
-    /* ЗОНЫ УПРАВЛЕНИЯ (ДЛЯ МЫШИ И ТАЧА) */
-    .control-zone {
-      position: fixed; top: 0; bottom: 0; z-index: 50; cursor: pointer;
-      /* background: rgba(255,0,0,0.1); Для отладки, потом убрать */
-    }
-    #zone-neg { left: 0; width: 50%; }
-    #zone-pos { right: 0; width: 50%; }
-
     /* ОВЕРЛЕИ */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
       background: transparent !important; 
-      z-index:500; pointer-events: auto;
+      z-index:500; pointer-events: auto; cursor: default;
     }
     .overlay .panel{
       background: rgba(20, 20, 20, 0.95); 
@@ -116,10 +108,7 @@
     <div class="badge score" id="hudScore">0</div>
   </div>
   
-  <div id="game">
-    <div id="zone-neg" class="control-zone"></div>
-    <div id="zone-pos" class="control-zone"></div>
-  </div>
+  <div id="game"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
@@ -128,24 +117,18 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === БАЛАНС ИГРЫ ===
-    const MAX_ITEMS = 3; // Максимум на экране
+    // === БАЛАНС ===
+    const MAX_ITEMS = 3; 
     
     function computeSpeedParams(S){
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
-      
-      // Скорость падения: от 0.6 до 2.5 (равномерная)
-      const vel = 0.6 + (2.5 - 0.6) * Math.pow(t, 1.2); 
-      
-      // ИНТЕРВАЛ (РИТМ):
-      // На 1 уровне: падает раз в 1.5 сек
-      // На 10 уровне: падает раз в 0.8 сек
-      // Это создает ритм и не дает им слипаться
-      const spawnRate = 1500 - (700 * t); 
-
+      // Скорость падения
+      const vel = 0.5 + (2.5 - 0.5) * Math.pow(t, 1.2); 
+      // Интервал появления
+      const minSpawnGap = 1000 - (500 * t); 
       const basePts = 5 + (50 - 5) * t;
-      return { vel, spawnRate, basePts: Math.round(basePts) };
+      return { vel, minSpawnGap, basePts: Math.round(basePts) };
     }
     
     const I18N = {
@@ -167,15 +150,21 @@
     
     let cfg = null;
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
+    // Для мыши: цель движения и флаг нажатия
+    let mouseTarget = null; 
+    let isMouseDown = false;
+
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.0, spawnRate: 1000, basePts: 20 };
+    let SPEED = { vel: 1.0, minSpawnGap: 1000, basePts: 20 };
     let IS_HORIZONTAL = false;
     
     // Переменные спавнера
     let lastSpawnTime = 0;
-    let spawnDeck = []; 
+    let checkInterval = null; 
     let lastZone = -1;
+    let spawnDeck = []; 
+    let bgImageDeck = []; // Колода для картинок (чтобы не повторялись)
 
     const params = new URLSearchParams(location.search);
     const ID = params.get('id');
@@ -227,9 +216,6 @@
          } else {
             playerNode.style.right = '20px'; playerNode.style.top = '50%';
          }
-         // Поворачиваем зоны для горизонтали
-         $('#zone-neg').style.cssText = "top:0; bottom:50%; left:0; right:0; width:100%";
-         $('#zone-pos').style.cssText = "top:50%; bottom:0; left:0; right:0; width:100%";
       } else {
          playerPos.x = window.innerWidth / 2;
          if(dir === 'down') {
@@ -244,22 +230,30 @@
     }
 
     function setupControls(){
-      // === УПРАВЛЕНИЕ ПО КЛИКУ/ТАЧУ НА ПОЛОВИНЫ ЭКРАНА ===
-      const zNeg = $('#zone-neg');
-      const zPos = $('#zone-pos');
-
-      const bind = (el, k) => {
-         el.onmousedown = () => keys[k] = true;
-         el.onmouseup = () => keys[k] = false;
-         el.onmouseleave = () => keys[k] = false;
-         el.ontouchstart = (e) => { e.preventDefault(); keys[k] = true; };
-         el.ontouchend = (e) => { e.preventDefault(); keys[k] = false; };
+      const gameDiv = $('#game');
+      
+      // === ЛОГИКА: "КЛИКАЮ ЛЕВЕЕ - ЕДЕТ ВЛЕВО" ===
+      const updateMouseTarget = (clientX, clientY) => {
+          if(IS_HORIZONTAL) {
+              const rect = gameDiv.getBoundingClientRect();
+              mouseTarget = clientY - rect.top;
+          } else {
+              const rect = gameDiv.getBoundingClientRect();
+              mouseTarget = clientX - rect.left;
+          }
       };
 
-      bind(zNeg, 'neg');
-      bind(zPos, 'pos');
+      // Мышь
+      gameDiv.onmousedown = e => { isMouseDown = true; updateMouseTarget(e.clientX, e.clientY); };
+      window.onmouseup = () => { isMouseDown = false; }; // Глобально, чтобы не залипало
+      gameDiv.onmousemove = e => { if(isMouseDown) updateMouseTarget(e.clientX, e.clientY); };
 
-      // КЛАВИАТУРА ТОЖЕ РАБОТАЕТ
+      // Тач
+      gameDiv.ontouchstart = e => { e.preventDefault(); isMouseDown = true; updateMouseTarget(e.touches[0].clientX, e.touches[0].clientY); };
+      gameDiv.ontouchend = e => { e.preventDefault(); isMouseDown = false; };
+      gameDiv.ontouchmove = e => { e.preventDefault(); if(isMouseDown) updateMouseTarget(e.touches[0].clientX, e.touches[0].clientY); };
+
+      // Клавиатура
       window.onkeydown = e => { 
          if(IS_HORIZONTAL) {
             if(e.key==='ArrowUp') keys.neg=true; if(e.key==='ArrowDown') keys.pos=true;
@@ -279,10 +273,27 @@
     function loopPlayer(){
       if(!playerNode || !running) { requestAnimationFrame(loopPlayer); return; }
       
-      // Плавное движение с инерцией
-      if(keys.neg) playerPos.v -= 1.2; 
-      if(keys.pos) playerPos.v += 1.2;
-      playerPos.v *= 0.88; // Трение
+      // Сбрасываем скорость от мыши каждый кадр, накапливаем заново
+      let moveV = 0;
+
+      // 1. Клавиатура (приоритет)
+      if(keys.neg) moveV -= 1.5; 
+      if(keys.pos) moveV += 1.5;
+
+      // 2. Мышь / Тач (если нажаты)
+      if (isMouseDown && mouseTarget !== null) {
+          const pVal = IS_HORIZONTAL ? playerPos.y : playerPos.x;
+          const diff = mouseTarget - pVal;
+          
+          // Двигаемся в сторону клика с инерцией
+          // "Deadzone" 10px чтобы не дрожал на месте
+          if (Math.abs(diff) > 10) {
+              moveV += Math.sign(diff) * 1.5; 
+          }
+      }
+
+      // Применяем инерцию к общей скорости
+      playerPos.v = (playerPos.v * 0.85) + moveV; // 0.85 - плавность
 
       if(IS_HORIZONTAL) {
          playerPos.y += playerPos.v;
@@ -312,8 +323,10 @@
     }
 
     function startLevel(){
+      if(checkInterval) clearInterval(checkInterval);
       document.querySelectorAll('.item').forEach(e=>e.remove()); 
       spawnDeck = []; 
+      bgImageDeck = []; // Сброс колоды фонов
       
       currentLevel++;
       if(currentLevel > cfg.levels.length) { gameOver(); return; }
@@ -329,45 +342,39 @@
         $('#hudTimer').textContent = time;
         if(time <= 0) {
           clearInterval(timer); 
+          if(checkInterval) clearInterval(checkInterval);
           document.querySelectorAll('.item').forEach(e=>e.remove());
           showLevelComplete();
         }
       }, 1000);
       
-      // ЗАПУСК ИГРОВОГО ЦИКЛА СПАВНА
-      gameLogicLoop(lv);
+      startSpawnerLoop(lv);
     }
 
-    // === ЛОГИКА СПАВНА: МЕТРОНОМ ===
-    function gameLogicLoop(lv){
+    function startSpawnerLoop(lv){
         const correct = lv.correct.map(v=>({v,g:true}));
         const wrong = lv.wrong.map(v=>({v,g:false}));
         const fullPool = [...correct, ...wrong];
         
         lastSpawnTime = Date.now();
 
-        const tick = () => {
+        checkInterval = setInterval(() => {
             if(!running) return;
-            
-            const now = Date.now();
             const items = document.querySelectorAll('.item');
+            const now = Date.now();
             
-            // 1. Проверяем лимит (не больше 3)
-            // 2. Проверяем таймер (прошло ли время с прошлого спавна)
-            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.spawnRate)) {
+            // Если место есть И время пришло
+            if(items.length < MAX_ITEMS && (now - lastSpawnTime > SPEED.minSpawnGap)) {
                 spawnOne(fullPool);
                 lastSpawnTime = now;
             }
-            
-            requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
+        }, 200);
     }
 
     function spawnOne(pool){
+        // Умная колода для слов
         if(spawnDeck.length === 0) {
             spawnDeck = pool.map((_, i) => i);
-            // Перемешиваем колоду
             for (let i = spawnDeck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [spawnDeck[i], spawnDeck[j]] = [spawnDeck[j], spawnDeck[i]];
@@ -375,6 +382,29 @@
         }
         const idx = spawnDeck.pop();
         drop(pool[idx]);
+    }
+
+    function getBgImage(STYLE) {
+        // Собираем доступные картинки
+        let available = [];
+        if(STYLE.bgImages && Array.isArray(STYLE.bgImages)) {
+            available = STYLE.bgImages;
+        } else if (STYLE.bgImage) {
+            available = String(STYLE.bgImage).split(/[\n\r,|;]+/).map(s=>s.trim()).filter(Boolean);
+        }
+
+        if (available.length === 0) return null;
+
+        // Если колода пуста, заполняем и мешаем
+        if (bgImageDeck.length === 0) {
+            bgImageDeck = [...available]; // Копируем
+            for (let i = bgImageDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [bgImageDeck[i], bgImageDeck[j]] = [bgImageDeck[j], bgImageDeck[i]];
+            }
+        }
+        // Возвращаем и удаляем из колоды
+        return bgImageDeck.pop();
     }
 
     function drop(data){
@@ -390,14 +420,12 @@
       const bg = document.createElement('div');
       bg.className = 'bg';
       
-      if(STYLE.bgImages && STYLE.bgImages.length) {
-         const pick = STYLE.bgImages[Math.floor(Math.random()*STYLE.bgImages.length)];
-         bg.style.backgroundImage = `url(${pick})`;
-      } else if(STYLE.bgImage) {
-         const list = String(STYLE.bgImage).split(/[\n\r,|;]+/).map(s=>s.trim()).filter(Boolean);
-         if(list.length) bg.style.backgroundImage = `url(${list[Math.floor(Math.random()*list.length)]})`;
+      // ИСПОЛЬЗУЕМ УМНУЮ КОЛОДУ ФОНОВ
+      const bgUrl = getBgImage(STYLE);
+      if(bgUrl) {
+          bg.style.backgroundImage = `url(${bgUrl})`;
       } else if(STYLE.bgColor) {
-         bg.style.backgroundColor = STYLE.bgColor;
+          bg.style.backgroundColor = STYLE.bgColor;
       }
       
       bg.style.opacity = STYLE.opacity || 1;
