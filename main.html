@@ -41,7 +41,7 @@
       pointer-events: auto;
     }
     .overlay .panel{
-      background: rgba(20, 20, 20, 0.9); /* Сама плашка темная, чтобы текст читался */
+      background: rgba(20, 20, 20, 0.95); /* Сама плашка темная */
       border: 1px solid rgba(255, 255, 255, 0.15); color:#fff; border-radius:24px;
       padding:40px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
       max-width: 480px; width: 90%; position: relative; z-index: 501; max-height: 90vh; overflow-y: auto;
@@ -74,7 +74,7 @@
       display:inline-flex; align-items:center; justify-content:center;
       padding:0; user-select:none; cursor:pointer; z-index: 10;
       box-sizing: border-box; 
-      white-space: nowrap; /* Чтобы текст не переносился */
+      white-space: nowrap; 
     }
     
     .item .bg{
@@ -84,8 +84,8 @@
       transition:filter .15s ease;
       background-position:center !important;
       background-repeat:no-repeat !important;
-      /* ИСПРАВЛЕНИЕ: Растягиваем картинку точно под размер бокса */
-      background-size: 100% 100% !important; 
+      /* ИСПРАВЛЕНИЕ: contain - сохраняет пропорции картинки! */
+      background-size: contain !important; 
     }
     
     .item .content{
@@ -133,16 +133,17 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // === ИСПРАВЛЕННАЯ СКОРОСТЬ (МЕДЛЕННЕЕ) ===
+    // === ИСПРАВЛЕННАЯ СКОРОСТЬ (ЕЩЕ МЕДЛЕННЕЕ) ===
     function computeSpeedParams(S){
       // S от 1 до 10. 
-      // При S=1 скорость 0.5 (очень медленно)
-      // При S=10 скорость 3.5 (быстро, но не "в три раза")
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
       
-      const vel = 0.5 + (3.5 - 0.5) * Math.pow(t, 1.2); 
-      const spawn = 2000 - (2000 - 500) * t; // Спавн от 2 сек до 0.5 сек
+      // Базовая скорость падения пикселей за кадр (было слишком быстро)
+      // Теперь от 0.3 (очень медленно) до 2.0 (нормально быстро)
+      const vel = 0.3 + (2.0 - 0.3) * Math.pow(t, 1.5); 
+      
+      const spawn = 2200 - (2200 - 600) * t; 
       const basePts = 5 + (50 - 5) * t;
       return { vel, spawn, basePts: Math.round(basePts) };
     }
@@ -404,7 +405,7 @@
       if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === ИСПРАВЛЕННЫЙ РАСЧЕТ РАЗМЕРОВ (Чтобы фрукт всегда накрывал текст) ===
+    // === ИСПРАВЛЕНИЕ РАЗМЕРОВ: КВАДРАТ ДЛЯ ФРУКТОВ, ЧТОБЫ НЕ РАСТЯГИВАЛИСЬ ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
@@ -414,18 +415,20 @@
        const r = content.getBoundingClientRect();
        const PAD = Number(STYLE.pad || 22);
 
-       // Берем ширину текста и добавляем паддинги, чтобы фрукт был больше текста
-       let W = Math.ceil(r.width + (PAD * 1.5)); 
-       let H = Math.ceil(r.height + 10); // Немного вертикального запаса
+       // 1. Измеряем ширину, которая нужна тексту
+       let wNeeded = Math.ceil(r.width + PAD); 
+       let hNeeded = Math.ceil(r.height + 10);
 
-       const shape = STYLE.shape || 'rounded';
-       if (shape === 'circle' || shape === 'diamond' || shape === 'star'){
-           const S = Math.max(W, H);
-           W = H = Math.ceil(S + 10);
-       }
+       // 2. Чтобы картинка (contain) не сплющивалась, контейнер должен быть пропорциональным.
+       // Для фруктов (обычно круглых) лучше всего квадрат.
+       // Берем МАКСИМУМ из ширины и высоты, чтобы вместить и длинный текст, и не сплющить фрукт.
+       const size = Math.max(wNeeded, hNeeded);
+
+       // Применяем размер квадратом (или близко к нему)
+       el.style.width = size + 'px';
+       el.style.height = size + 'px';
        
-       el.style.width = W + 'px';
-       el.style.height = H + 'px';
+       // Центрируем контент внутри этого квадрата (flexbox в CSS уже делает это)
     }
 
     // === СИСТЕМА ЗОН (АНТИ-КУЧКОВАНИЕ) ===
