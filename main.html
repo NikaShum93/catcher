@@ -5,43 +5,45 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Catcher Game</title>
   <style>
-    :root{ --ui: #ffd700; --glow: #00f0ff; --ui-soft: rgba(255,215,0,.14); }
+    :root{ --ui: #ffd700; --glow: #00f0ff; }
     
     /* === БАЗА === */
     html,body{height:100%}
+    /* ФОН ИГРЫ ПОЛНОСТЬЮ ПРОЗРАЧНЫЙ */
     body{ margin:0; background: transparent !important; color:#fff; overflow:hidden; font-family:system-ui,sans-serif; }
     #game{ position:relative; width:100%; height:100%; overflow:hidden; }
 
-    /* === HUD (СКРЫТ ПО УМОЛЧАНИЮ) === */
+    /* === HUD === */
     .hud{
       position:fixed; left:12px; top:12px; right:12px; display:none; /* Скрыт до старта */
       justify-content:space-between; font-weight:700; z-index:20; pointer-events:none;
       gap:12px;
     }
     .badge{
-      background: rgba(17, 17, 17, 0.85); /* Более плотный фон для читаемости */
+      background: rgba(17, 17, 17, 0.85); 
       border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 8px 16px; 
       color: #fff; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .levelTitle{ color: var(--ui); max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* === ИГРОК (СКРЫТ ПО УМОЛЧАНИЮ) === */
+    /* === ИГРОК === */
     #player {
-      position: absolute; z-index: 100; pointer-events: none; display: none; /* Скрыт до старта */
+      position: absolute; z-index: 100; pointer-events: none; display: none;
       background-position: center; background-size: contain; background-repeat: no-repeat; will-change: left, top;
     }
     .touch-zone { position: fixed; z-index: 5; }
 
-    /* === ОВЕРЛЕИ (БЕЗ РАЗМЫТИЯ, ПРОСТО ТЕМНЫЕ) === */
+    /* === ОВЕРЛЕИ (ПРОЗРАЧНЫЙ ФОН!) === */
     .overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;
-      background: rgba(0,0,0,0.85); /* Просто темный фон, без блюра */
+      background: transparent !important; /* УБРАЛИ ЗАТЕМНЕНИЕ */
       z-index:500;
+      pointer-events: auto;
     }
     .overlay .panel{
-      background: #1a1a1a; 
+      background: rgba(20, 20, 20, 0.9); /* Сама плашка темная, чтобы текст читался */
       border: 1px solid rgba(255, 255, 255, 0.15); color:#fff; border-radius:24px;
-      padding:40px; text-align:center; box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      padding:40px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
       max-width: 480px; width: 90%; position: relative; z-index: 501; max-height: 90vh; overflow-y: auto;
     }
     .overlay h2{ margin:0 0 10px; font-size:32px; color:var(--ui); text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
@@ -71,7 +73,8 @@
       position:absolute; transform:translateZ(0);
       display:inline-flex; align-items:center; justify-content:center;
       padding:0; user-select:none; cursor:pointer; z-index: 10;
-      box-sizing: border-box; /* Важно для паддингов */
+      box-sizing: border-box; 
+      white-space: nowrap; /* Чтобы текст не переносился */
     }
     
     .item .bg{
@@ -81,15 +84,15 @@
       transition:filter .15s ease;
       background-position:center !important;
       background-repeat:no-repeat !important;
-      background-size: contain !important; 
+      /* ИСПРАВЛЕНИЕ: Растягиваем картинку точно под размер бокса */
+      background-size: 100% 100% !important; 
     }
     
     .item .content{
       position:relative; z-index:1;
       display:flex; align-items:center; justify-content:center;
       text-align:center; line-height:1.15;
-      width: var(--cw, auto); height: var(--ch, auto);
-      white-space: nowrap; /* Текст не переносится, чтобы корректно считать ширину */
+      width: 100%; height: 100%;
     }
     
     .item .content span{ display:inline-block; font-weight:800; }
@@ -99,12 +102,9 @@
     .shape-rect .bg { border-radius:10px }
     .shape-rounded .bg { border-radius:20px }
     .shape-circle .bg { border-radius:50% }
-    .shape-diamond .bg { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) }
-    .shape-star .bg { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-
+    
     /* Эффекты */
     .fx-shadow .bg{ box-shadow:0 10px 30px rgba(0,0,0,.55) }
-    .fx-3d .bg{ box-shadow: 7px 7px 20px rgba(0,0,0,.55), inset -5px -5px 12px rgba(255,255,255,.22) }
     .fx-glow .bg{ box-shadow:0 0 18px var(--glow, #00f0ff), 0 0 28px rgba(0,0,0,.25) }
     
     .score-float{
@@ -133,11 +133,16 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+    // === ИСПРАВЛЕННАЯ СКОРОСТЬ (МЕДЛЕННЕЕ) ===
     function computeSpeedParams(S){
+      // S от 1 до 10. 
+      // При S=1 скорость 0.5 (очень медленно)
+      // При S=10 скорость 3.5 (быстро, но не "в три раза")
       const s = clamp(Number(S||5), 1, 10);
       const t = (s - 1) / 9; 
-      const vel = 0.2 + (3.5 - 0.2) * Math.pow(t, 1.5); 
-      const spawn = 2500 - (2500 - 600) * t;
+      
+      const vel = 0.5 + (3.5 - 0.5) * Math.pow(t, 1.2); 
+      const spawn = 2000 - (2000 - 500) * t; // Спавн от 2 сек до 0.5 сек
       const basePts = 5 + (50 - 5) * t;
       return { vel, spawn, basePts: Math.round(basePts) };
     }
@@ -163,10 +168,9 @@
     let playerNode = null, playerPos = {x:0, y:0, v:0}, keys = {neg:false, pos:false}; 
     let score=0, hits=0, wrongClicks=0, missed=0, currentLevel=0, running=false;
     let LANG = 'ru'; 
-    let SPEED = { vel: 1.5, spawn: 1000, basePts: 20 };
+    let SPEED = { vel: 1.0, spawn: 1500, basePts: 20 };
     let IS_HORIZONTAL = false;
     let spawnTimer = null;
-    // Для системы анти-кучкования
     let lastZone = -1;
 
     const params = new URLSearchParams(location.search);
@@ -289,10 +293,8 @@
     function startGame(){
       score=0; hits=0; wrongClicks=0; missed=0; currentLevel=0; running=true;
       $('#hudScore').textContent = '0';
-      // ПОКАЗЫВАЕМ ИНТЕРФЕЙС ТОЛЬКО СЕЙЧАС
       $('.hud').style.display = 'flex';
       if(playerNode) playerNode.style.display = 'block';
-      
       startLevel();
     }
 
@@ -360,9 +362,9 @@
       const con = document.createElement('div');
       con.className = 'content';
       
-      // ПАДДИНГИ ИЗ КОНФИГА
+      // Паддинги из конфига для контента
       const PAD = Number(STYLE.pad || 22);
-      con.style.padding = `6px ${PAD}px`; // Вертикальный паддинг поменьше, горизонтальный из конфига
+      con.style.padding = `6px ${PAD}px`;
       
       const IMG_BOX = Number(STYLE.imgBox || 160);
 
@@ -388,7 +390,6 @@
       el.appendChild(bg); el.appendChild(con);
       $('#game').appendChild(el);
       
-      // Сначала подгоняем размер, потом ставим позицию (чтобы знать ширину для рандома)
       if(cfg.language==='math') {
           MathJax.typesetPromise([el]).then(() => {
              fitGeometryBox(el, STYLE);
@@ -403,7 +404,7 @@
       if(!playerNode) el.onclick = () => catchItem(el);
     }
     
-    // === 2. ИСПРАВЛЕННЫЙ РАСЧЕТ РАЗМЕРОВ (УЧИТЫВАЕТ ПАДДИНГИ) ===
+    // === ИСПРАВЛЕННЫЙ РАСЧЕТ РАЗМЕРОВ (Чтобы фрукт всегда накрывал текст) ===
     function fitGeometryBox(el, STYLE){
        const content = el.querySelector('.content');
        if(!content) return;
@@ -411,17 +412,11 @@
        el.style.width = ''; el.style.height='';
        
        const r = content.getBoundingClientRect();
-       
-       // Определяем паддинги рамки. Если есть картинка-фон, добавляем запас
-       const hasImg = (STYLE.bgImages && STYLE.bgImages.length) || (STYLE.bgImage && STYLE.bgImage.length);
-       
-       // ВАЖНО: Мы берем ширину контента и ДОБАВЛЯЕМ отступы СНАРУЖИ, чтобы текст не прилипал
-       // Ширина текста + паддинги конфига * 2
        const PAD = Number(STYLE.pad || 22);
-       let W = Math.ceil(r.width + (PAD * 0.5)); 
-       
-       // Если это картинка, используем фиксированную высоту, иначе высоту текста
-       let H = Math.ceil(r.height);
+
+       // Берем ширину текста и добавляем паддинги, чтобы фрукт был больше текста
+       let W = Math.ceil(r.width + (PAD * 1.5)); 
+       let H = Math.ceil(r.height + 10); // Немного вертикального запаса
 
        const shape = STYLE.shape || 'rounded';
        if (shape === 'circle' || shape === 'diamond' || shape === 'star'){
@@ -433,7 +428,7 @@
        el.style.height = H + 'px';
     }
 
-    // === 3. СИСТЕМА ЗОН (АНТИ-КУЧКОВАНИЕ) ===
+    // === СИСТЕМА ЗОН (АНТИ-КУЧКОВАНИЕ) ===
     function setStartPosition(el) {
       const dir = cfg.direction || 'down';
       const elW = el.offsetWidth || 100;
@@ -442,10 +437,9 @@
       let x, y;
 
       if (IS_HORIZONTAL) {
-          // Горизонтальный режим - делим высоту на зоны
           const zones = 3;
           const H = window.innerHeight;
-          const zoneH = (H - 100) / zones; // 100px запас
+          const zoneH = (H - 100) / zones; 
           
           let z;
           let tries = 0;
@@ -457,17 +451,15 @@
           
           const minY = 50 + (z * zoneH);
           const maxY = 50 + ((z+1) * zoneH) - elH;
-          
           y = minY + Math.random() * (maxY - minY);
           
           if(dir === 'left') x = (window.innerWidth + 100); 
           else x = -250; 
           
       } else {
-          // Вертикальный режим - делим ширину на зоны
-          const zones = 4; // Больше зон для вертикали
+          const zones = 4;
           const W = window.innerWidth;
-          const zoneW = (W - 40) / zones; // 40px запас
+          const zoneW = (W - 40) / zones; 
           
           let z;
           let tries = 0;
@@ -479,7 +471,6 @@
           
           const minX = 20 + (z * zoneW);
           const maxX = 20 + ((z+1) * zoneW) - elW;
-          
           x = minX + Math.random() * (maxX - minX);
           
           if(dir === 'down') y = -250;
@@ -514,7 +505,6 @@
            if(dir === 'down') y += speed; else y -= speed;
            
            let curX = parseFloat(el.style.left);
-           // Ограничение по краям при покачивании
            if(curX + sway < 10) el.style.left = (curX + (10 - (curX+sway))) + 'px';
            else if (curX + sway > window.innerWidth - el.offsetWidth - 10) el.style.left = (curX - ((curX+sway) - (window.innerWidth - el.offsetWidth - 10))) + 'px';
            
