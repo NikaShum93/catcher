@@ -64,14 +64,19 @@
     const rnd = (a, b) => a + Math.random() * (b - a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    const SAFETY_CAP = 5; 
+    // Убрали искусственный лимит, чтобы предметы вылетали строго по таймеру
+    const SAFETY_CAP = 50; 
     
     function computeSpeedParams(S) {
       const s = clamp(Number(S || 5), 1, 10);
       const t = (s - 1) / 9; 
       
-      const vel = 0.5 + (2.0 - 0.5) * Math.pow(t, 1.2); 
-      const spawnRate = 4500 - (2500 * t); 
+      const baseVel = 0.5 + (2.0 - 0.5) * Math.pow(t, 1.2); 
+      const vel = baseVel * 1.2; // Увеличение скорости на 20%
+      
+      const baseSpawnRate = 3000 - (2000 * t); 
+      const spawnRate = baseSpawnRate * 1.66; // Компенсация скорости + х2 расстояние
+      
       const basePts = 5 + (50 - 5) * t;
       
       return { vel, spawnRate, basePts: Math.round(basePts) };
