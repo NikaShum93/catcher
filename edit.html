@@ -387,8 +387,20 @@
     }
 
     function updatePreview(){
-      const item = $('#previewItem'); const bgLayer = item.querySelector('.bg-layer'); const contentLayer = item.querySelector('.content-layer');
-      const text = $('#previewText'); const val  = $('#previewValue').value; const isImg = item.dataset.mode === 'image';
+      const item = $('#previewItem'); 
+      const bgLayer = item.querySelector('.bg-layer'); 
+      const contentLayer = item.querySelector('.content-layer');
+      
+      // Защита от потери текстового элемента
+      let text = $('#previewText');
+      if (!text) {
+          text = document.createElement('span');
+          text.id = 'previewText';
+          text.style.fontWeight = '700';
+      }
+      
+      const val  = $('#previewValue').value.trim(); 
+      const isImg = item.dataset.mode === 'image';
 
       item.className = `preview-item shape-${$('#shape').value}`;
       if($('#shadowOn').checked) item.classList.add('fx-shadow');
@@ -403,14 +415,23 @@
       else { bgLayer.style.backgroundImage = 'none'; bgLayer.style.backgroundColor = $('#bgColor').value; }
       bgLayer.style.opacity = $('#opacity').value;
 
-      text.style.color = $('#textColor').value; text.style.fontSize = $('#fontSize').value + 'px'; text.style.fontFamily = `"${$('#font').value}", system-ui`;
+      text.style.color = $('#textColor').value; 
+      text.style.fontSize = $('#fontSize').value + 'px'; 
+      text.style.fontFamily = `"${$('#font').value}", system-ui`;
 
-      if(isImg || val.startsWith('http')){
-        contentLayer.innerHTML = `<img src="${val.startsWith('http')?val:'https://via.placeholder.com/150'}" style="width:100%;height:100%;object-fit:contain">`;
-        const sz = $('#imgBox').value || 160; item.style.width = sz+'px'; item.style.height = sz+'px';
+      if(isImg || /^https?:\/\//i.test(val)){
+        contentLayer.innerHTML = `<img src="${/^https?:\/\//i.test(val) ? val : 'https://via.placeholder.com/150'}" style="width:100%;height:100%;object-fit:contain; pointer-events:none;">`;
+        const sz = $('#imgBox').value || 160; 
+        item.style.width = sz+'px'; 
+        item.style.height = sz+'px';
       } else {
-        contentLayer.innerHTML = ''; contentLayer.appendChild(text); text.textContent = val;
-        item.style.width = 'auto'; item.style.height = 'auto'; item.style.minWidth = '120px'; item.style.minHeight = '80px';
+        contentLayer.innerHTML = ''; 
+        contentLayer.appendChild(text); 
+        text.textContent = val;
+        item.style.width = 'auto'; 
+        item.style.height = 'auto'; 
+        item.style.minWidth = '120px'; 
+        item.style.minHeight = '80px';
       }
       contentLayer.style.padding = $('#pad').value + 'px';
     }
@@ -467,7 +488,7 @@
         const res = await fetch(ENDPOINT, { method:'POST', headers: {'Content-Type':'application/json', 'X-Publish-Key': KEY}, body: JSON.stringify({ id, mode:'json', folder:'data', content: JSON.stringify(cfg) }) });
         if(!res.ok) throw new Error();
         
-        generatedCode = `<iframe src="${BASE}?id=${id}" width="900" height="600" style="border:0" allow="autoplay; fullscreen"></iframe>`;
+        generatedCode = `<div style="position:relative; width:100%; padding-bottom:56.25%;"><iframe src="${BASE}?id=${id}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allow="autoplay; fullscreen"></iframe></div>`;
         $('#copyBtn').style.display = 'block';
         alert("✅ Игра успешно сохранена на сервере! Теперь можно скопировать код.");
       } catch(e) { alert("❌ Ошибка при публикации."); }
