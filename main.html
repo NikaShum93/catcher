@@ -64,7 +64,6 @@
     const rnd = (a, b) => a + Math.random() * (b - a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    // Убрали искусственный лимит, чтобы предметы вылетали строго по таймеру
     const SAFETY_CAP = 50; 
     
     function computeSpeedParams(S) {
@@ -72,10 +71,10 @@
       const t = (s - 1) / 9; 
       
       const baseVel = 0.5 + (2.0 - 0.5) * Math.pow(t, 1.2); 
-      const vel = baseVel * 1.2; // Увеличение скорости на 20%
+      const vel = baseVel * 1.2; 
       
       const baseSpawnRate = 3000 - (2000 * t); 
-      const spawnRate = baseSpawnRate * 1.66; // Компенсация скорости + х2 расстояние
+      const spawnRate = baseSpawnRate * 1.66; 
       
       const basePts = 5 + (50 - 5) * t;
       
@@ -425,7 +424,7 @@
           y = minY + (z * zoneH) + Math.random() * zoneH;
           y = clamp(y, minY, maxY);
           
-          x = dir === 'left' ? (window.innerWidth + 100) : -250; 
+          x = dir === 'left' ? (window.innerWidth + 20) : (-elW - 20); 
       } else {
           const minX = safeMargin;
           const maxX = window.innerWidth - elW - safeMargin;
@@ -440,7 +439,7 @@
           x = minX + (z * zoneW) + Math.random() * zoneW;
           x = clamp(x, minX, maxX); 
           
-          y = dir === 'down' ? -250 : (window.innerHeight + 50);
+          y = dir === 'down' ? (-elH - 20) : (window.innerHeight + 20);
       }
       
       el.style.left = x + 'px';
@@ -464,7 +463,7 @@
            el.style.left = x + 'px';
            el.style.transform = `translateY(${sway}px)`;
            
-           if (x < -300 || x > window.innerWidth + 300) {
+           if (x < -150 || x > window.innerWidth + 150) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
            } else requestAnimationFrame(fall);
@@ -479,7 +478,7 @@
            el.style.top = y + 'px';
            el.style.transform = `translateX(${sway}px)`;
            
-           if (y > window.innerHeight + 300 || y < -300) {
+           if (y > window.innerHeight + 150 || y < -150) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
            } else requestAnimationFrame(fall);
