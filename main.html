@@ -106,7 +106,7 @@
     
     let lastSpawnTime = 0;
     let checkInterval = null;
-    let lastZone = -1;
+    let lastSpawnPos = -999; 
     let spawnDeck = [];
     let bgImageDeck = []; 
 
@@ -298,8 +298,6 @@
     function startSpawnerLoop(lv) {
         const fullPool = [ ...lv.correct.map(v => ({ v, g: true })), ...lv.wrong.map(v => ({ v, g: false })) ];
         
-        // Спавним стартовую очередь: первый ближе к центру, второй четверть пути, третий у самого края.
-        // Все последующие будут рождаться на крае (offsetRatio = 0) с задержкой по таймеру.
         spawnOne(fullPool, 0.5);  
         spawnOne(fullPool, 0.25); 
         spawnOne(fullPool, 0.0);  
@@ -388,10 +386,18 @@
       el.appendChild(bg); el.appendChild(con);
       $('#game').appendChild(el);
       
-      if (cfg.language === 'math') { MathJax.typesetPromise([el]).then(() => { fitGeometryBox(el, STYLE); setStartPosition(el, offsetRatio); }); } 
-      else { fitGeometryBox(el, STYLE); setStartPosition(el, offsetRatio); }
-      
-      startFalling(el);
+      // Ждем отрисовку MathJax (если включена), и только ПОТОМ начинаем ронять
+      if (cfg.language === 'math') { 
+         MathJax.typesetPromise([el]).then(() => { 
+            fitGeometryBox(el, STYLE); 
+            setStartPosition(el, offsetRatio); 
+            startFalling(el);
+         }); 
+      } else { 
+         fitGeometryBox(el, STYLE); 
+         setStartPosition(el, offsetRatio); 
+         startFalling(el);
+      }
     }
     
     function fitGeometryBox(el, STYLE) {
@@ -411,49 +417,37 @@
       const elH = el.offsetHeight || 80;
       let x, y;
 
-      const MARGIN = 40;
-      const SWAY_AMP = 25; 
-      const safeMargin = MARGIN + SWAY_AMP;
-
       if (IS_HORIZONTAL) {
-          const minY = safeMargin;
-          const maxY = window.innerHeight - elH - safeMargin;
+          const minY = 20;
+          const maxY = Math.max(minY + 50, window.innerHeight - elH - 20);
           
-          const zones = 3;
-          const zoneH = (maxY - minY) / zones;
-          let z; let tries = 0;
+          let tries = 0;
+          do {
+              y = minY + Math.random() * (maxY - minY);
+              tries++;
+          } while (Math.abs(y - lastSpawnPos) < (window.innerHeight * 0.2) && tries < 10);
           
-          do { z = Math.floor(Math.random() * zones); tries++; } while (z === lastZone && tries < 5);
-          lastZone = z;
-          
-          y = minY + (z * zoneH) + Math.random() * zoneH;
+          lastSpawnPos = y;
           y = clamp(y, minY, maxY);
           
-          // Базовый спавн строго за краем экрана
           x = dir === 'left' ? (window.innerWidth + 20) : (-elW - 20); 
-          
-          // Если это стартовая очередь, двигаем фигуры вперед по пути
           if (offsetRatio > 0) {
               x += (dir === 'left' ? -1 : 1) * (window.innerWidth * offsetRatio);
           }
       } else {
-          const minX = safeMargin;
-          const maxX = window.innerWidth - elW - safeMargin;
+          const minX = 20;
+          const maxX = Math.max(minX + 50, window.innerWidth - elW - 20);
           
-          const zones = 4;
-          const zoneW = (maxX - minX) / zones;
-          let z; let tries = 0;
+          let tries = 0;
+          do {
+              x = minX + Math.random() * (maxX - minX);
+              tries++;
+          } while (Math.abs(x - lastSpawnPos) < (window.innerWidth * 0.2) && tries < 10);
           
-          do { z = Math.floor(Math.random() * zones); tries++; } while (z === lastZone && tries < 5);
-          lastZone = z;
-          
-          x = minX + (z * zoneW) + Math.random() * zoneW;
+          lastSpawnPos = x;
           x = clamp(x, minX, maxX); 
           
-          // Базовый спавн строго за краем экрана
           y = dir === 'down' ? (-elH - 20) : (window.innerHeight + 20);
-          
-          // Если это стартовая очередь, двигаем фигуры вперед по пути
           if (offsetRatio > 0) {
               y += (dir === 'down' ? 1 : -1) * (window.innerHeight * offsetRatio);
           }
@@ -480,7 +474,8 @@
            el.style.left = x + 'px';
            el.style.transform = `translateY(${sway}px)`;
            
-           if (x < -150 || x > window.innerWidth + 150) {
+           // УВЕЛИЧЕННАЯ ЗОНА УДАЛЕНИЯ: удаляем только если улетел дальше 400px от края
+           if (x < -400 || x > window.innerWidth + 400) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
            } else requestAnimationFrame(fall);
@@ -495,7 +490,8 @@
            el.style.top = y + 'px';
            el.style.transform = `translateX(${sway}px)`;
            
-           if (y > window.innerHeight + 150 || y < -150) {
+           // УВЕЛИЧЕННАЯ ЗОНА УДАЛЕНИЯ: удаляем только если улетел дальше 400px от края
+           if (y > window.innerHeight + 400 || y < -400) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
            } else requestAnimationFrame(fall);
