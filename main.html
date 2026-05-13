@@ -64,14 +64,14 @@
     const rnd = (a, b) => a + Math.random() * (b - a);
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    const SAFETY_CAP = 12; 
+    const SAFETY_CAP = 5; 
     
     function computeSpeedParams(S) {
       const s = clamp(Number(S || 5), 1, 10);
       const t = (s - 1) / 9; 
       
       const vel = 0.5 + (2.0 - 0.5) * Math.pow(t, 1.2); 
-      const spawnRate = 3000 - (2000 * t); 
+      const spawnRate = 4500 - (2500 * t); 
       const basePts = 5 + (50 - 5) * t;
       
       return { vel, spawnRate, basePts: Math.round(basePts) };
@@ -294,7 +294,7 @@
     function startSpawnerLoop(lv) {
         const fullPool = [ ...lv.correct.map(v => ({ v, g: true })), ...lv.wrong.map(v => ({ v, g: false })) ];
         
-        spawnOne(fullPool); // Сразу спавним первый
+        spawnOne(fullPool); 
         lastSpawnTime = Date.now();
         
         checkInterval = setInterval(() => {
@@ -402,14 +402,11 @@
       const elH = el.offsetHeight || 80;
       let x, y;
 
-      // === ФИКС ОТСТУПОВ ===
-      // Запас 40px от края + 25px на покачивание (sway) = 65px гарантированного отступа
       const MARGIN = 40;
       const SWAY_AMP = 25; 
       const safeMargin = MARGIN + SWAY_AMP;
 
       if (IS_HORIZONTAL) {
-          // Летит по горизонтали. Спавним по оси Y, ограничиваем верх и низ.
           const minY = safeMargin;
           const maxY = window.innerHeight - elH - safeMargin;
           
@@ -421,11 +418,10 @@
           lastZone = z;
           
           y = minY + (z * zoneH) + Math.random() * zoneH;
-          y = clamp(y, minY, maxY); // Жестко не пускаем за края
+          y = clamp(y, minY, maxY);
           
           x = dir === 'left' ? (window.innerWidth + 100) : -250; 
       } else {
-          // Летит по вертикали. Спавним по оси X, ограничиваем лево и право.
           const minX = safeMargin;
           const maxX = window.innerWidth - elW - safeMargin;
           
@@ -437,7 +433,7 @@
           lastZone = z;
           
           x = minX + (z * zoneW) + Math.random() * zoneW;
-          x = clamp(x, minX, maxX); // Жестко не пускаем за края
+          x = clamp(x, minX, maxX); 
           
           y = dir === 'down' ? -250 : (window.innerHeight + 50);
       }
