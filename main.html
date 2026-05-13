@@ -65,6 +65,7 @@
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
     const SAFETY_CAP = 50; 
+    let mjPromise = Promise.resolve();
     
     function computeSpeedParams(S) {
       const s = clamp(Number(S || 5), 1, 10);
@@ -237,6 +238,9 @@
       }
       
       playerPos.v = (playerPos.v * 0.85) + moveV; 
+      
+      // ПРОВЕРЯЕМ ГАЛОЧКУ ОТРАЖЕНИЯ ГЕРОЯ ИЗ КОНФИГА
+      let flipTransform = (cfg.player && cfg.player.flipHero) ? ' scaleX(-1)' : '';
 
       if (IS_HORIZONTAL) {
          playerPos.y += playerPos.v;
@@ -244,14 +248,14 @@
          if (playerPos.y < h/2) { playerPos.y = h/2; playerPos.v = 0; }
          if (playerPos.y > window.innerHeight - h/2) { playerPos.y = window.innerHeight - h/2; playerPos.v = 0; }
          playerNode.style.top = playerPos.y + 'px';
-         playerNode.style.transform = 'translateY(-50%)'; 
+         playerNode.style.transform = 'translateY(-50%)' + flipTransform; 
       } else {
          playerPos.x += playerPos.v;
          const w = playerNode.offsetWidth;
          if (playerPos.x < w/2) { playerPos.x = w/2; playerPos.v = 0; }
          if (playerPos.x > window.innerWidth - w/2) { playerPos.x = window.innerWidth - w/2; playerPos.v = 0; }
          playerNode.style.left = playerPos.x + 'px';
-         playerNode.style.transform = 'translateX(-50%)'; 
+         playerNode.style.transform = 'translateX(-50%)' + flipTransform; 
       }
       
       checkCollisions();
@@ -386,13 +390,12 @@
       el.appendChild(bg); el.appendChild(con);
       $('#game').appendChild(el);
       
-      // Ждем отрисовку MathJax (если включена), и только ПОТОМ начинаем ронять
       if (cfg.language === 'math') { 
-         MathJax.typesetPromise([el]).then(() => { 
+         mjPromise = mjPromise.then(() => MathJax.typesetPromise([el])).then(() => { 
             fitGeometryBox(el, STYLE); 
             setStartPosition(el, offsetRatio); 
             startFalling(el);
-         }); 
+         }).catch(err => console.log(err)); 
       } else { 
          fitGeometryBox(el, STYLE); 
          setStartPosition(el, offsetRatio); 
@@ -474,7 +477,6 @@
            el.style.left = x + 'px';
            el.style.transform = `translateY(${sway}px)`;
            
-           // УВЕЛИЧЕННАЯ ЗОНА УДАЛЕНИЯ: удаляем только если улетел дальше 400px от края
            if (x < -400 || x > window.innerWidth + 400) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
@@ -490,7 +492,6 @@
            el.style.top = y + 'px';
            el.style.transform = `translateX(${sway}px)`;
            
-           // УВЕЛИЧЕННАЯ ЗОНА УДАЛЕНИЯ: удаляем только если улетел дальше 400px от края
            if (y > window.innerHeight + 400 || y < -400) {
              if (el.dataset.good === 'true') missed++;
              el.remove();
