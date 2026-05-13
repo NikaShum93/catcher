@@ -289,8 +289,7 @@
           <div id="previewItem" class="preview-item shape-rounded fx-shadow" style="--glow:#ff00ff;">
             <div class="bg-layer"></div>
             <div class="content-layer">
-               <span id="previewText" style="font-weight:700; font-size:28px">Dream</span>
-            </div>
+               </div>
           </div>
         </div>
       </div>
@@ -392,21 +391,14 @@
 
     function applyGoogleFont(fontName){
       $('#gf').href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g,'+')}:wght@400;700&display=swap`;
-      $('#previewText').style.fontFamily = `"${fontName}", system-ui`;
+      // Применяем шрифт к contentLayer, чтобы он подхватил любой текст внутри
+      $('#previewItem').querySelector('.content-layer').style.fontFamily = `"${fontName}", system-ui`;
     }
 
     function updatePreview(){
       const item = $('#previewItem'); 
       const bgLayer = item.querySelector('.bg-layer'); 
       const contentLayer = item.querySelector('.content-layer');
-      
-      // Защита от потери текстового элемента
-      let text = $('#previewText');
-      if (!text) {
-          text = document.createElement('span');
-          text.id = 'previewText';
-          text.style.fontWeight = '700';
-      }
       
       const val  = $('#previewValue').value.trim(); 
       const isImg = item.dataset.mode === 'image';
@@ -424,27 +416,31 @@
       else { bgLayer.style.backgroundImage = 'none'; bgLayer.style.backgroundColor = $('#bgColor').value; }
       bgLayer.style.opacity = $('#opacity').value;
 
-      text.style.color = $('#textColor').value; 
-      text.style.fontSize = $('#fontSize').value + 'px'; 
-      text.style.fontFamily = `"${$('#font').value}", system-ui`;
-
       if(isImg || /^https?:\/\//i.test(val)){
         contentLayer.innerHTML = `<img src="${/^https?:\/\//i.test(val) ? val : 'https://via.placeholder.com/150'}" style="width:100%;height:100%;object-fit:contain; pointer-events:none;">`;
         const sz = $('#imgBox').value || 160; 
         item.style.width = sz+'px'; 
         item.style.height = sz+'px';
       } else {
+        // Чтобы MathJax не кешировал элемент, мы удаляем старый и создаем НОВЫЙ каждый раз
         contentLayer.innerHTML = ''; 
-        contentLayer.appendChild(text); 
+        const newText = document.createElement('span');
+        newText.id = 'previewText';
+        newText.style.fontWeight = '700';
+        newText.style.color = $('#textColor').value; 
+        newText.style.fontSize = $('#fontSize').value + 'px'; 
+        contentLayer.appendChild(newText); 
         
         // РЕНДЕР ФОРМУЛ В ПРЕДПРОСМОТРЕ
         if ($('#language').value === 'math') {
-            text.textContent = `\\(${val}\\)`;
-            if(window.MathJax) {
-                editorMjPromise = editorMjPromise.then(() => MathJax.typesetPromise([text])).catch(err => console.log(err));
+            newText.textContent = `\\(${val}\\)`;
+            if(window.MathJax && window.MathJax.typesetPromise) {
+                // Очищаем кеш MathJax для этого элемента перед рендером
+                MathJax.typesetClear([newText]);
+                editorMjPromise = editorMjPromise.then(() => MathJax.typesetPromise([newText])).catch(err => console.log(err));
             }
         } else {
-            text.textContent = val;
+            newText.textContent = val;
         }
 
         item.style.width = 'auto'; 
@@ -485,7 +481,6 @@
           borderOn: $('#borderOn').checked, borderColor: $('#borderColor').value, borderWidth: $('#borderWidth').value, shadow: $('#shadowOn').checked,
           glow: $('#glowOn').checked, glowColor: $('#glowColor').value, fx3d: $('#fx3d').checked, opacity: $('#opacity').value, imgBox: $('#imgBox').value
         },
-        // СОХРАНЯЕМ ГАЛОЧКУ ОТРАЖЕНИЯ
         player: { img: $('#playerImg').value.trim(), size: $('#playerSize').value, flipHero: $('#flipHero').checked },
         direction: $('#direction').value, start: { title: $('#startTitle').value, btnText: $('#startBtnText').value }, finalFeedback: $('#finalFeedback').value, levels: levels
       };
@@ -508,7 +503,7 @@
         const res = await fetch(ENDPOINT, { method:'POST', headers: {'Content-Type':'application/json', 'X-Publish-Key': KEY}, body: JSON.stringify({ id, mode:'json', folder:'data', content: JSON.stringify(cfg) }) });
         if(!res.ok) throw new Error();
         
-        generatedCode = `<div style="position:relative; width:100%; padding-bottom:56.25%;"><iframe src="${BASE}?id=${id}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allow="autoplay; fullscreen"></iframe></div>`;
+        generatedCode = `<div style="position:relative; width:100%; padding-bottom:56.25%;"><script src="${BASE}?id=${id}"><\/script></div>`;
         $('#copyBtn').style.display = 'block';
         alert("✅ Игра успешно сохранена на сервере! Теперь можно скопировать код.");
       } catch(e) { alert("❌ Ошибка при публикации."); }
