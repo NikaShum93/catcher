@@ -298,7 +298,12 @@
     function startSpawnerLoop(lv) {
         const fullPool = [ ...lv.correct.map(v => ({ v, g: true })), ...lv.wrong.map(v => ({ v, g: false })) ];
         
-        spawnOne(fullPool); 
+        // Спавним стартовую очередь: первый ближе к центру, второй четверть пути, третий у самого края.
+        // Все последующие будут рождаться на крае (offsetRatio = 0) с задержкой по таймеру.
+        spawnOne(fullPool, 0.5);  
+        spawnOne(fullPool, 0.25); 
+        spawnOne(fullPool, 0.0);  
+        
         lastSpawnTime = Date.now();
         
         checkInterval = setInterval(() => {
@@ -307,13 +312,13 @@
             const now = Date.now();
             
             if (items.length < SAFETY_CAP && (now - lastSpawnTime > SPEED.spawnRate)) {
-              spawnOne(fullPool);
+              spawnOne(fullPool, 0.0);
               lastSpawnTime = now;
             }
         }, 100);
     }
 
-    function spawnOne(pool) {
+    function spawnOne(pool, offsetRatio = 0) {
         if (spawnDeck.length === 0) {
             spawnDeck = pool.map((_, i) => i);
             for (let i = spawnDeck.length - 1; i > 0; i--) {
@@ -321,7 +326,7 @@
               [spawnDeck[i], spawnDeck[j]] = [spawnDeck[j], spawnDeck[i]];
             }
         }
-        drop(pool[spawnDeck.pop()]);
+        drop(pool[spawnDeck.pop()], offsetRatio);
     }
 
     function getBgImage(STYLE) {
@@ -341,7 +346,7 @@
         return bgImageDeck.pop();
     }
 
-    function drop(data) {
+    function drop(data, offsetRatio = 0) {
       const STYLE = cfg.style || {};
       const FONT = cfg.font || 'sans-serif';
       const FONT_SIZE = Number(cfg.fontSize || 24);
@@ -383,8 +388,8 @@
       el.appendChild(bg); el.appendChild(con);
       $('#game').appendChild(el);
       
-      if (cfg.language === 'math') { MathJax.typesetPromise([el]).then(() => { fitGeometryBox(el, STYLE); setStartPosition(el); }); } 
-      else { fitGeometryBox(el, STYLE); setStartPosition(el); }
+      if (cfg.language === 'math') { MathJax.typesetPromise([el]).then(() => { fitGeometryBox(el, STYLE); setStartPosition(el, offsetRatio); }); } 
+      else { fitGeometryBox(el, STYLE); setStartPosition(el, offsetRatio); }
       
       startFalling(el);
     }
@@ -400,7 +405,7 @@
        el.style.width = size + 'px'; el.style.height = size + 'px';
     }
 
-    function setStartPosition(el) {
+    function setStartPosition(el, offsetRatio = 0) {
       const dir = cfg.direction || 'down';
       const elW = el.offsetWidth || 100;
       const elH = el.offsetHeight || 80;
@@ -424,8 +429,13 @@
           y = minY + (z * zoneH) + Math.random() * zoneH;
           y = clamp(y, minY, maxY);
           
-          // СТАРТ ПРЯМО В ВИДИМОЙ ЗОНЕ (примерно с трети экрана)
-          x = dir === 'left' ? (window.innerWidth * 0.7) : (window.innerWidth * 0.3); 
+          // Базовый спавн строго за краем экрана
+          x = dir === 'left' ? (window.innerWidth + 20) : (-elW - 20); 
+          
+          // Если это стартовая очередь, двигаем фигуры вперед по пути
+          if (offsetRatio > 0) {
+              x += (dir === 'left' ? -1 : 1) * (window.innerWidth * offsetRatio);
+          }
       } else {
           const minX = safeMargin;
           const maxX = window.innerWidth - elW - safeMargin;
@@ -440,8 +450,13 @@
           x = minX + (z * zoneW) + Math.random() * zoneW;
           x = clamp(x, minX, maxX); 
           
-          // СТАРТ ПРЯМО В ВИДИМОЙ ЗОНЕ (примерно с трети экрана)
-          y = dir === 'down' ? (window.innerHeight * 0.3) : (window.innerHeight * 0.7);
+          // Базовый спавн строго за краем экрана
+          y = dir === 'down' ? (-elH - 20) : (window.innerHeight + 20);
+          
+          // Если это стартовая очередь, двигаем фигуры вперед по пути
+          if (offsetRatio > 0) {
+              y += (dir === 'down' ? 1 : -1) * (window.innerHeight * offsetRatio);
+          }
       }
       
       el.style.left = x + 'px';
