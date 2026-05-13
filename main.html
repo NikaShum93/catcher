@@ -424,7 +424,8 @@
           y = minY + (z * zoneH) + Math.random() * zoneH;
           y = clamp(y, minY, maxY);
           
-          x = dir === 'left' ? (window.innerWidth + 20) : (-elW - 20); 
+          // СТАРТ ПРЯМО В ВИДИМОЙ ЗОНЕ (примерно с трети экрана)
+          x = dir === 'left' ? (window.innerWidth * 0.7) : (window.innerWidth * 0.3); 
       } else {
           const minX = safeMargin;
           const maxX = window.innerWidth - elW - safeMargin;
@@ -439,7 +440,8 @@
           x = minX + (z * zoneW) + Math.random() * zoneW;
           x = clamp(x, minX, maxX); 
           
-          y = dir === 'down' ? (-elH - 20) : (window.innerHeight + 20);
+          // СТАРТ ПРЯМО В ВИДИМОЙ ЗОНЕ (примерно с трети экрана)
+          y = dir === 'down' ? (window.innerHeight * 0.3) : (window.innerHeight * 0.7);
       }
       
       el.style.left = x + 'px';
