@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
   <link id="gf" rel="stylesheet" href="">
 
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
   <style>
     :root {
       --glass: rgba(255, 255, 255, 0.1);
@@ -191,9 +193,15 @@
         <input type="url" id="playerImg" placeholder="https://.../unicorn.gif">
         <div class="hint">Если пусто — играем кликами (без героя).</div>
         
-        <div style="margin-top:12px">
-            <label>Размер героя (px): <span id="sizeVal">120</span></label>
-            <input type="range" id="playerSize" value="120" min="50" max="300" oninput="document.getElementById('sizeVal').innerText = this.value">
+        <div class="row" style="margin-top:12px; align-items: center;">
+            <div>
+                <label>Размер героя (px): <span id="sizeVal">120</span></label>
+                <input type="range" id="playerSize" value="120" min="50" max="300" oninput="document.getElementById('sizeVal').innerText = this.value">
+            </div>
+            <div class="check-row" style="margin-top: 10px;">
+                <input type="checkbox" id="flipHero">
+                <label for="flipHero">Отразить героя</label>
+            </div>
         </div>
       </div>
 
@@ -306,6 +314,7 @@
     const $ = sel => document.querySelector(sel);
     const $$ = sel => document.querySelectorAll(sel);
     let generatedCode = "";
+    let editorMjPromise = Promise.resolve();
 
     function createBubbles() {
       const container = document.getElementById('bubbles');
@@ -427,7 +436,17 @@
       } else {
         contentLayer.innerHTML = ''; 
         contentLayer.appendChild(text); 
-        text.textContent = val;
+        
+        // РЕНДЕР ФОРМУЛ В ПРЕДПРОСМОТРЕ
+        if ($('#language').value === 'math') {
+            text.textContent = `\\(${val}\\)`;
+            if(window.MathJax) {
+                editorMjPromise = editorMjPromise.then(() => MathJax.typesetPromise([text])).catch(err => console.log(err));
+            }
+        } else {
+            text.textContent = val;
+        }
+
         item.style.width = 'auto'; 
         item.style.height = 'auto'; 
         item.style.minWidth = '120px'; 
@@ -466,7 +485,8 @@
           borderOn: $('#borderOn').checked, borderColor: $('#borderColor').value, borderWidth: $('#borderWidth').value, shadow: $('#shadowOn').checked,
           glow: $('#glowOn').checked, glowColor: $('#glowColor').value, fx3d: $('#fx3d').checked, opacity: $('#opacity').value, imgBox: $('#imgBox').value
         },
-        player: { img: $('#playerImg').value.trim(), size: $('#playerSize').value },
+        // СОХРАНЯЕМ ГАЛОЧКУ ОТРАЖЕНИЯ
+        player: { img: $('#playerImg').value.trim(), size: $('#playerSize').value, flipHero: $('#flipHero').checked },
         direction: $('#direction').value, start: { title: $('#startTitle').value, btnText: $('#startBtnText').value }, finalFeedback: $('#finalFeedback').value, levels: levels
       };
     }
